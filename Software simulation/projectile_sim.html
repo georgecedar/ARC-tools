@@ -1,0 +1,3848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Projectile Motion Simulator</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0f1923;
+            --bg-secondary: #152232;
+            --bg-card: #1a2d42;
+            --bg-input: #0c1520;
+            --text-primary: #e0e6ed;
+            --text-secondary: #7a8fa6;
+            --text-accent: #5ce0d2;
+            --border: #253a52;
+            --btn-run: #e94560;
+            --btn-run-hover: #ff5a7a;
+            --btn-reset: #4a3f6b;
+            --btn-reset-hover: #5e5080;
+            --btn-csv: #0a8f8f;
+            --btn-csv-hover: #0cb5b5;
+            --scrollbar: #253a52;
+            --scrollbar-hover: #3a5570;
+            --group-border: #2a4060;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            height: 52px;
+        }
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .header-title svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text-accent);
+        }
+        .header-title span {
+            color: var(--text-accent);
+        }
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            padding: 7px 18px;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            letter-spacing: 0.3px;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-run { background: var(--btn-run); color: #fff; }
+        .btn-run:hover { background: var(--btn-run-hover); }
+        .btn-reset { background: var(--btn-reset); color: #ccc; }
+        .btn-reset:hover { background: var(--btn-reset-hover); }
+        .btn-csv { background: var(--btn-csv); color: #fff; }
+        .btn-csv:hover { background: var(--btn-csv-hover); }
+
+        /* ===== PRIMARY TABS ===== */
+        .primary-tabs {
+            display: flex;
+            gap: 0;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            height: 36px;
+        }
+        .primary-tab {
+            padding: 8px 24px;
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            letter-spacing: 0.3px;
+        }
+        .primary-tab:hover {
+            color: var(--text-primary);
+        }
+        .primary-tab.active {
+            color: var(--text-accent);
+            border-bottom-color: var(--text-accent);
+        }
+
+        /* ===== MAIN LAYOUT ===== */
+        .main-content {
+            height: calc(100vh - 52px - 36px - 32px);
+        }
+
+        /* ===== SETUP PANEL ===== */
+        .setup-panel {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            padding: 16px 24px;
+        }
+        .setup-panel.active {
+            display: block;
+        }
+        .setup-columns {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px 20px;
+            max-width: 1200px;
+        }
+
+        /* ===== RESULTS PANEL ===== */
+        .results-panel {
+            display: none;
+            height: 100%;
+            grid-template-columns: 1fr 240px;
+            gap: 0;
+        }
+        .results-panel.active {
+            display: grid;
+        }
+
+        /* ===== SIDEBAR (now used inside setup-columns) ===== */
+        .sidebar {
+            background: var(--bg-secondary);
+            overflow-y: auto;
+            padding: 0;
+        }
+        .input-group {
+            margin-bottom: 12px;
+            border: 1px solid var(--group-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .input-group-header {
+            background: var(--bg-card);
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-accent);
+            border-bottom: 1px solid var(--group-border);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .input-group-header:hover {
+            background: var(--bg-secondary);
+        }
+        .input-group-header .chevron {
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+        .input-group.collapsed .input-group-header {
+            border-bottom: none;
+        }
+        .input-group.collapsed .input-group-header .chevron {
+            transform: rotate(-90deg);
+        }
+        .input-group-body {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: max-height 0.3s ease, padding 0.25s ease, opacity 0.2s ease;
+            max-height: 4000px;
+            opacity: 1;
+            overflow: hidden;
+        }
+        .input-group.collapsed .input-group-body {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .field label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+        .field label .unit {
+            color: var(--text-accent);
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        .field input[type="number"] {
+            width: 100%;
+            padding: 6px 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .field input[type="number"]:focus {
+            border-color: var(--text-accent);
+        }
+        .field input[type="number"]::-webkit-inner-spin-button {
+            opacity: 0.5;
+        }
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+        }
+        .field-row .field label {
+            font-size: 10px;
+        }
+
+        /* ===== PROJECTILE SELECTOR ===== */
+        .projectile-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--group-border);
+        }
+        .projectile-tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .projectile-tab {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .projectile-tab:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        .projectile-tab.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--text-accent);
+        }
+        .projectile-color-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: inline-block;
+        }
+        .projectile-tab-remove {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 0 2px;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .projectile-tab-remove:hover {
+            color: var(--btn-run);
+        }
+        .btn-add-projectile {
+            width: 26px;
+            height: 26px;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .btn-add-projectile:hover {
+            color: var(--text-accent);
+            border-color: var(--text-accent);
+        }
+
+        /* ===== CSV DROPDOWN ===== */
+        .csv-dropdown {
+            position: relative;
+        }
+        .csv-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            min-width: 160px;
+            z-index: 100;
+            overflow: hidden;
+        }
+        .csv-dropdown-menu.open {
+            display: block;
+        }
+        .csv-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            transition: background 0.15s;
+        }
+        .csv-dropdown-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* ===== CSV COLUMN PICKER MODAL ===== */
+        .csv-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .csv-modal-overlay.open {
+            display: flex;
+        }
+        .csv-modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px 24px;
+            min-width: 320px;
+            max-width: 400px;
+            color: var(--text-primary);
+        }
+        .csv-modal h3 {
+            margin-bottom: 14px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .csv-modal-group {
+            margin-bottom: 10px;
+        }
+        .csv-modal-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 5px 0;
+        }
+        .csv-modal-group label span {
+            color: var(--text-secondary);
+            font-size: 11px;
+            margin-left: 4px;
+        }
+        .csv-modal-group input[type="checkbox"] {
+            accent-color: var(--text-accent);
+            width: 15px;
+            height: 15px;
+        }
+        .csv-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .csv-modal-actions button {
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+        }
+        .csv-modal-btn-cancel {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+        .csv-modal-btn-cancel:hover {
+            background: var(--border);
+        }
+        .csv-modal-btn-export {
+            background: var(--btn-csv);
+            color: #fff;
+        }
+        .csv-modal-btn-export:hover {
+            background: var(--btn-csv-hover);
+        }
+        .csv-modal-selectall {
+            font-size: 11px;
+            color: var(--text-accent);
+            cursor: pointer;
+            background: none;
+            border: none;
+            margin-bottom: 10px;
+        }
+        .csv-modal-selectall:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== STATS INDICATOR ===== */
+        .stats-projectile-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding-bottom: 6px;
+        }
+
+        /* ===== DRAG STAGES ===== */
+        .drag-stage {
+            border: 1px solid var(--group-border);
+            border-radius: 5px;
+            margin-bottom: 8px;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+        .drag-stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 8px;
+            background: var(--bg-card);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-accent);
+        }
+        .drag-stage-remove {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .drag-stage-remove:hover {
+            color: var(--btn-run);
+        }
+        .drag-stage-body {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .drag-stage-body .trigger-param.hidden {
+            display: none;
+        }
+        .btn-add-stage {
+            width: 100%;
+            padding: 5px;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .btn-add-stage:hover {
+            color: var(--text-accent);
+            border-color: var(--text-accent);
+        }
+        .field select {
+            width: 100%;
+            padding: 6px 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .field select:focus {
+            border-color: var(--text-accent);
+        }
+
+        /* ===== SENSOR CARDS ===== */
+        .sensor-card {
+            border: 1px solid var(--group-border);
+            border-radius: 5px;
+            margin-bottom: 8px;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+        .sensor-noise-param.hidden {
+            display: none;
+        }
+        .sensor-card input[type="text"] {
+            width: 100%;
+            padding: 6px 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .sensor-card input[type="text"]:focus {
+            border-color: var(--text-accent);
+        }
+
+        /* ===== GUIDANCE SECTION ===== */
+        .guidance-upload-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .guidance-upload-area .btn {
+            flex-shrink: 0;
+            padding: 5px 12px;
+            font-size: 11px;
+        }
+        .guidance-status {
+            font-size: 11px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .guidance-status.loaded {
+            color: #5ce0d2;
+        }
+        .guidance-status.error {
+            color: #e94560;
+        }
+        .guidance-enable-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+        .guidance-enable-row input[type="checkbox"] {
+            accent-color: var(--text-accent);
+        }
+        .guidance-info details {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        .guidance-info summary {
+            cursor: pointer;
+            color: var(--text-accent);
+            font-weight: 600;
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+        .guidance-api-ref {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            font-size: 10px;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .guidance-compile-cmd {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            font-size: 10px;
+            color: var(--text-accent);
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+        .guidance-sensor-map {
+            font-size: 11px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .guidance-log {
+            font-size: 11px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            color: var(--text-secondary);
+            max-height: 80px;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        /* ===== PLOT AREA ===== */
+        .viz-area {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+        .results-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .view-tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .view-tab {
+            padding: 5px 8px 5px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .view-tab:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        .view-tab.active {
+            background: var(--bg-card);
+            color: var(--text-accent);
+            border-color: var(--text-accent);
+        }
+        .view-tab .view-tab-close {
+            font-size: 13px;
+            line-height: 1;
+            opacity: 0;
+            transition: opacity 0.15s;
+            padding: 0 2px;
+            color: var(--text-secondary);
+        }
+        .view-tab:hover .view-tab-close {
+            opacity: 0.6;
+        }
+        .view-tab .view-tab-close:hover {
+            opacity: 1;
+            color: #e94560;
+        }
+        .view-tab-add {
+            padding: 5px 10px;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            position: relative;
+        }
+        .view-tab-add:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--text-primary);
+        }
+        .view-tab-add-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            min-width: 140px;
+            z-index: 100;
+            overflow: hidden;
+        }
+        .view-tab-add-menu.open {
+            display: block;
+        }
+        .view-tab-add-item {
+            display: block;
+            width: 100%;
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .view-tab-add-item:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .results-toolbar .btn {
+            padding: 5px 14px;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        #plot-container {
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ===== CUSTOM VIEW BUILDER ===== */
+        .custom-view-config {
+            display: none;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+        .custom-view-config.open {
+            display: block;
+        }
+        .custom-view-config h4 {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-accent);
+            margin-bottom: 6px;
+        }
+        .custom-view-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px 12px;
+        }
+        .custom-view-fields label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 1px 0;
+        }
+        .custom-view-fields label:hover {
+            color: var(--text-primary);
+        }
+        .custom-view-fields input[type="checkbox"] {
+            accent-color: var(--text-accent);
+            width: 13px;
+            height: 13px;
+        }
+        .custom-view-category {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-accent);
+            letter-spacing: 0.5px;
+            width: 100%;
+            margin-top: 3px;
+            margin-bottom: 1px;
+        }
+        .custom-view-category:first-child {
+            margin-top: 0;
+        }
+
+        /* ===== DATA TABLE ===== */
+        .data-table-container {
+            display: none;
+            flex: 1;
+            overflow: auto;
+            min-height: 0;
+        }
+        .data-table-container.active {
+            display: block;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+        }
+        .data-table th {
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            color: var(--text-accent);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            z-index: 1;
+        }
+        .data-table td {
+            padding: 3px 8px;
+            color: var(--text-primary);
+            border-bottom: 1px solid rgba(37,58,82,0.3);
+            white-space: nowrap;
+        }
+        .data-table tr:hover td {
+            background: var(--bg-card);
+        }
+        .data-table-info {
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            display: none;
+        }
+        .data-table-info.active {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* ===== ANIMATION CONTROLS ===== */
+        .animation-controls {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .animation-controls.active {
+            display: flex;
+        }
+        .animation-controls .anim-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        .animation-controls .anim-btn:hover {
+            background: var(--bg-input);
+        }
+        .animation-controls .anim-slider {
+            flex: 1;
+            min-width: 80px;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--bg-input);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        .animation-controls .anim-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--text-accent);
+            cursor: pointer;
+        }
+        .animation-controls .anim-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--text-accent);
+            border: none;
+            cursor: pointer;
+        }
+        .animation-controls .anim-time {
+            font-size: 12px;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            color: var(--text-primary);
+            min-width: 80px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .animation-controls .anim-speed {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 11px;
+            padding: 4px 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .animation-controls .anim-speed option {
+            background: var(--bg-card);
+        }
+
+        /* ===== STATS PANEL ===== */
+        .stats-panel {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .stats-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-accent);
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--group-border);
+        }
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'Consolas', 'SF Mono', monospace;
+            color: var(--text-primary);
+        }
+        .stat-value .stat-unit {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .stats-divider {
+            border: none;
+            border-top: 1px solid var(--group-border);
+            margin: 4px 0;
+        }
+        .stats-bottom {
+            margin-top: auto;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 6px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-secondary);
+            height: 32px;
+        }
+        .footer .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .status-ready { background: #3aaf6c; }
+        .status-running { background: #e9a545; animation: pulse 1s infinite; }
+        .status-done { background: #5ce0d2; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ===== SCROLLBAR ===== */
+        .setup-panel::-webkit-scrollbar, .stats-panel::-webkit-scrollbar, .data-table-container::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .setup-panel::-webkit-scrollbar-track, .stats-panel::-webkit-scrollbar-track, .data-table-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .setup-panel::-webkit-scrollbar-thumb, .stats-panel::-webkit-scrollbar-thumb, .data-table-container::-webkit-scrollbar-thumb {
+            background: var(--scrollbar);
+            border-radius: 3px;
+        }
+        .setup-panel::-webkit-scrollbar-thumb:hover, .stats-panel::-webkit-scrollbar-thumb:hover, .data-table-container::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-hover);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .results-panel.active {
+                grid-template-columns: 1fr;
+            }
+            .stats-panel {
+                display: none;
+            }
+            .setup-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+    <div class="header-title">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        <span>3D Projectile Motion Simulator</span>
+    </div>
+    <div class="header-buttons">
+        <button class="btn btn-run" id="btn-run">Run</button>
+        <button class="btn btn-reset" id="btn-reset">Reset</button>
+    </div>
+</div>
+
+<!-- ===== PRIMARY TABS ===== -->
+<div class="primary-tabs">
+    <button class="primary-tab active" data-panel="setup">Setup</button>
+    <button class="primary-tab" data-panel="results">Results</button>
+</div>
+
+<!-- ===== CSV COLUMN PICKER MODAL ===== -->
+<div class="csv-modal-overlay" id="csv-modal-overlay">
+    <div class="csv-modal">
+        <h3>Select CSV Data Columns</h3>
+        <button class="csv-modal-selectall" id="csv-select-all">Select All</button>
+        <div class="csv-modal-group">
+            <label><input type="checkbox" id="csv-col-time" checked> Time <span>(time)</span></label>
+        </div>
+        <div class="csv-modal-group">
+            <label><input type="checkbox" id="csv-col-position" checked> Position <span>(x, y, z)</span></label>
+        </div>
+        <div class="csv-modal-group">
+            <label><input type="checkbox" id="csv-col-velocity" checked> Velocity <span>(vx, vy, vz, speed)</span></label>
+        </div>
+        <div class="csv-modal-group">
+            <label><input type="checkbox" id="csv-col-orientation" checked> Orientation <span>(pitch, yaw, roll)</span></label>
+        </div>
+        <div class="csv-modal-group">
+            <label><input type="checkbox" id="csv-col-atmosphere" checked> Atmosphere <span>(altitude, air_density, mach)</span></label>
+        </div>
+        <div class="csv-modal-group">
+            <label><input type="checkbox" id="csv-col-forces" checked> Forces &amp; Drag <span>(drag_coefficient, acceleration, dynamic_pressure)</span></label>
+        </div>
+        <div class="csv-modal-group">
+            <label><input type="checkbox" id="csv-col-imu" checked> IMU / Body-Frame Accel <span>(imu_forward, imu_right, imu_down)</span></label>
+        </div>
+        <div class="csv-modal-group" id="csv-modal-guidance-group" style="display:none;">
+            <label><input type="checkbox" id="csv-col-guidance" checked> Guidance <span>(guidance_cd, guidance_area)</span></label>
+        </div>
+        <div class="csv-modal-group" id="csv-modal-sensors-group" style="display:none;">
+            <label><input type="checkbox" id="csv-col-sensors" checked> Sensors <span id="csv-sensors-list-label">(none)</span></label>
+        </div>
+        <div class="csv-modal-actions">
+            <button class="csv-modal-btn-cancel" id="csv-modal-cancel">Cancel</button>
+            <button class="csv-modal-btn-export" id="csv-modal-export">Export</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main-content">
+
+    <!-- ===== SETUP PANEL ===== -->
+    <div class="setup-panel active" id="setup-panel">
+        <!-- Projectile Selector -->
+        <div class="projectile-selector">
+            <div class="projectile-tabs" id="projectile-tabs"></div>
+            <button class="btn-add-projectile" id="btn-add-projectile" title="Add Projectile">+</button>
+        </div>
+        <div class="setup-columns">
+            <!-- Launch Parameters -->
+            <div class="input-group">
+                <div class="input-group-header">Launch Parameters <span class="chevron">&#9660;</span></div>
+                <div class="input-group-body">
+                    <div class="field">
+                        <label>Velocity <span class="unit">m/s</span></label>
+                        <input type="number" id="in-velocity" value="80" min="0.1" max="10000" step="10">
+                    </div>
+                    <div class="field">
+                        <label>Elevation Angle <span class="unit">deg</span></label>
+                        <input type="number" id="in-elevation" value="80" min="0" max="90" step="0.5">
+                    </div>
+                    <div class="field">
+                        <label>Azimuth Angle <span class="unit">deg</span></label>
+                        <input type="number" id="in-azimuth" value="0" min="0" max="360" step="1">
+                    </div>
+                    <div class="field">
+                        <label>Launch Altitude <span class="unit">m ASL</span></label>
+                        <input type="number" id="in-launch-alt" value="0" min="0" max="50000" step="100">
+                    </div>
+                    <div class="field">
+                        <label>Ground Altitude <span class="unit">m ASL</span></label>
+                        <input type="number" id="in-ground-alt" value="0" min="0" max="50000" step="100">
+                    </div>
+                    <div class="field">
+                        <label>Roll Angle <span class="unit">deg</span></label>
+                        <input type="number" id="in-roll" value="0" min="-180" max="180" step="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projectile Properties -->
+            <div class="input-group">
+                <div class="input-group-header">Projectile Properties <span class="chevron">&#9660;</span></div>
+                <div class="input-group-body">
+                    <div class="field">
+                        <label>Mass <span class="unit">kg</span></label>
+                        <input type="number" id="in-mass" value="0.6" min="0.001" max="100000" step="0.1">
+                    </div>
+                    <div class="field">
+                        <label>Frontal Area <span class="unit">m&sup2;</span></label>
+                        <input type="number" id="in-area" value="0.00336" min="0.0001" max="100" step="0.001">
+                    </div>
+                    <div class="field">
+                        <label>Base Drag Coefficient (Cd) <span class="unit">—</span></label>
+                        <input type="number" id="in-cd" value="0.30" min="0.0" max="3.0" step="0.01">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wind -->
+            <div class="input-group">
+                <div class="input-group-header">Wind <span class="chevron">&#9660;</span></div>
+                <div class="input-group-body">
+                    <div class="field-row">
+                        <div class="field">
+                            <label>X <span class="unit">m/s</span></label>
+                            <input type="number" id="in-wind-x" value="0" step="1">
+                        </div>
+                        <div class="field">
+                            <label>Y <span class="unit">m/s</span></label>
+                            <input type="number" id="in-wind-y" value="0" step="1">
+                        </div>
+                        <div class="field">
+                            <label>Z <span class="unit">m/s</span></label>
+                            <input type="number" id="in-wind-z" value="0" step="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simulation Settings -->
+            <div class="input-group">
+                <div class="input-group-header">Simulation Settings <span class="chevron">&#9660;</span></div>
+                <div class="input-group-body">
+                    <div class="field">
+                        <label>Time Step <span class="unit">s</span></label>
+                        <input type="number" id="in-dt" value="0.01" min="0.0001" max="1" step="0.001">
+                    </div>
+                    <div class="field">
+                        <label>Max Simulation Time <span class="unit">s</span></label>
+                        <input type="number" id="in-maxtime" value="600" min="1" max="100000" step="10">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drag Stages -->
+            <div class="input-group">
+                <div class="input-group-header">Drag Stages <span class="chevron">&#9660;</span></div>
+                <div class="input-group-body">
+                    <div id="drag-stages-list"></div>
+                    <button class="btn btn-add-stage" id="btn-add-stage">+ Add Drag Stage</button>
+                </div>
+            </div>
+
+            <!-- Guidance Program -->
+            <div class="input-group" id="guidance-group">
+                <div class="input-group-header">Guidance Program <span class="chevron">&#9660;</span></div>
+                <div class="input-group-body">
+                    <div class="field">
+                        <label>WASM Module (.js)</label>
+                        <div class="guidance-upload-area">
+                            <input type="file" id="guidance-file" accept=".js" style="display:none">
+                            <button class="btn btn-csv" id="btn-guidance-upload">Upload</button>
+                            <span id="guidance-filename" class="guidance-status">No file loaded</span>
+                        </div>
+                    </div>
+                    <div class="guidance-enable-row">
+                        <input type="checkbox" id="guidance-enabled" disabled>
+                        <label for="guidance-enabled">Enable guidance control</label>
+                    </div>
+                    <div class="field">
+                        <label>Target Altitude <span class="unit">m</span></label>
+                        <input type="number" id="guidance-target-alt" value="3048" step="1">
+                    </div>
+                    <div class="field">
+                        <label>Guidance Param 1</label>
+                        <input type="number" id="guidance-param-1" value="0" step="any">
+                    </div>
+                    <div class="field">
+                        <label>Guidance Param 2</label>
+                        <input type="number" id="guidance-param-2" value="0" step="any">
+                    </div>
+                    <div class="field">
+                        <label>Guidance Param 3</label>
+                        <input type="number" id="guidance-param-3" value="0" step="any">
+                    </div>
+                    <div class="guidance-info">
+                        <details>
+                            <summary>C++ API Reference &amp; Compile Instructions</summary>
+                            <pre class="guidance-api-ref">// sim_api.h — Include in your C++ guidance code
+#pragma once
+#include &lt;cmath&gt;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Shared buffer layout (float array indices):
+//  [0]  time (s)          [1]  dt (s)
+//  [2]  x (m)             [3]  y (m)             [4]  z (m)
+//  [5]  vx (m/s)          [6]  vy (m/s)          [7]  vz (m/s)
+//  [8]  speed (m/s)       [9]  altitude ASL (m)
+//  [10] mach              [11] dynamic_pressure (Pa)
+//  [12] air_density        [13] pitch (deg)
+//  [14] yaw (deg)         [15] roll (deg)
+//  [16] imu_forward        [17] imu_right          [18] imu_down
+//  [19] current_cd        [20] current_area (m²)
+//  [21] past_apogee (1/0) [22] target_altitude (m)
+//  [23] num_sensors       [24..39] sensor values
+// Output:
+//  [40] new_cd (&lt;=0 = no change)
+//  [41] new_area (&lt;=0 = no change)
+// User parameters:
+//  [42] guidance_param_1  [43] guidance_param_2  [44] guidance_param_3
+//  [45] predicted_apogee (m ASL, output from guidance)
+//  [46] base_cd (projectile's configured Cd, before guidance)
+//  [47] base_area (projectile's configured area, before guidance)
+//  [48] pressure (Pa)     [49] temperature (K)
+
+extern float* sim_buf;
+
+// Convenience accessors
+inline float sim_time()       { return sim_buf[0]; }
+inline float sim_dt()         { return sim_buf[1]; }
+inline float sim_x()          { return sim_buf[2]; }
+inline float sim_y()          { return sim_buf[3]; }
+inline float sim_z()          { return sim_buf[4]; }
+inline float sim_vx()         { return sim_buf[5]; }
+inline float sim_vy()         { return sim_buf[6]; }
+inline float sim_vz()         { return sim_buf[7]; }
+inline float sim_speed()      { return sim_buf[8]; }
+inline float sim_altitude()   { return sim_buf[9]; }
+inline float sim_mach()       { return sim_buf[10]; }
+inline float sim_q()          { return sim_buf[11]; }
+inline float sim_rho()        { return sim_buf[12]; }
+inline float sim_pitch()      { return sim_buf[13]; }
+inline float sim_yaw()        { return sim_buf[14]; }
+inline float sim_roll()       { return sim_buf[15]; }
+inline float sim_imu_fwd()    { return sim_buf[16]; }
+inline float sim_imu_right()  { return sim_buf[17]; }
+inline float sim_imu_down()   { return sim_buf[18]; }
+inline float sim_cd()         { return sim_buf[19]; }
+inline float sim_area()       { return sim_buf[20]; }
+inline bool  sim_past_apogee(){ return sim_buf[21] &gt; 0.5f; }
+inline float sim_target_alt() { return sim_buf[22]; }
+inline int   sim_num_sensors(){ return (int)sim_buf[23]; }
+inline float sim_sensor(int i){ return sim_buf[24+i]; }
+inline void sim_set_cd(float v)  { sim_buf[40] = v; }
+inline void sim_set_area(float v){ sim_buf[41] = v; }
+inline float sim_param1()        { return sim_buf[42]; }
+inline float sim_param2()        { return sim_buf[43]; }
+inline float sim_param3()        { return sim_buf[44]; }
+inline void sim_set_predicted_apogee(float v) { sim_buf[45] = v; }
+inline float sim_base_cd()   { return sim_buf[46]; }
+inline float sim_base_area() { return sim_buf[47]; }
+inline float sim_pressure()  { return sim_buf[48]; }
+inline float sim_temperature(){ return sim_buf[49]; }
+
+void guidance_init(void);
+void guidance_update(void);
+void sim_set_buffer(float* buf);
+
+#ifdef __cplusplus
+}
+#endif</pre>
+                            <div style="margin-bottom:6px"><strong>sim_api.cpp</strong> (link with your code):</div>
+                            <pre class="guidance-compile-cmd">#include "sim_api.h"
+float* sim_buf = nullptr;
+extern "C" void sim_set_buffer(float* buf) {
+    sim_buf = buf;
+}</pre>
+                            <div style="margin-bottom:6px"><strong>Compile:</strong></div>
+                            <pre class="guidance-compile-cmd">emcc guidance.cpp sim_api.cpp -o guidance.js -O2 \
+  -sEXPORTED_FUNCTIONS='["_guidance_init","_guidance_update","_sim_set_buffer","_malloc","_free"]' \
+  -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap","HEAPF32"]' \
+  -sMODULARIZE=1 -sEXPORT_NAME='createGuidanceModule' \
+  -sSINGLE_FILE=1 -sALLOW_MEMORY_GROWTH=1</pre>
+                            <div style="margin-bottom:6px"><strong>Sensor index mapping:</strong></div>
+                            <div id="guidance-sensor-map" class="guidance-sensor-map">No sensors configured</div>
+                        </details>
+                    </div>
+                    <div id="guidance-log" class="guidance-log"></div>
+                </div>
+            </div>
+
+            <!-- Sensors -->
+            <div class="input-group">
+                <div class="input-group-header">Sensors <span class="chevron">&#9660;</span></div>
+                <div class="input-group-body">
+                    <div id="sensors-list"></div>
+                    <button class="btn btn-add-stage" id="btn-add-sensor">+ Add Sensor</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RESULTS PANEL ===== -->
+    <div class="results-panel" id="results-panel">
+        <div class="viz-area">
+            <div class="results-toolbar">
+                <div class="view-tabs" id="view-tabs-container"></div>
+                <div class="view-tab-add" id="view-tab-add">
+                    +
+                    <div class="view-tab-add-menu" id="view-tab-add-menu"></div>
+                </div>
+                <div class="csv-dropdown" id="csv-dropdown">
+                    <button class="btn btn-csv" id="btn-csv">Download CSV &#9660;</button>
+                    <div class="csv-dropdown-menu" id="csv-dropdown-menu"></div>
+                </div>
+            </div>
+            <!-- Custom view config panel (hidden by default) -->
+            <div class="custom-view-config" id="custom-view-config">
+                <h4>Select data to plot</h4>
+                <div class="custom-view-fields" id="custom-view-fields"></div>
+            </div>
+            <!-- Animation controls (hidden by default) -->
+            <div class="animation-controls" id="animation-controls">
+                <button class="anim-btn" id="anim-play" title="Play / Pause">&#9654;</button>
+                <button class="anim-btn" id="anim-reset" title="Reset">&#9632;</button>
+                <input type="range" class="anim-slider" id="anim-slider" min="0" max="1000" value="0">
+                <span class="anim-time" id="anim-time">0.000 / 0.000 s</span>
+                <select class="anim-speed" id="anim-speed" title="Playback speed">
+                    <option value="0.1">0.1x</option>
+                    <option value="0.25">0.25x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="2">2x</option>
+                    <option value="5">5x</option>
+                    <option value="10">10x</option>
+                    <option value="25">25x</option>
+                </select>
+            </div>
+            <!-- Data table info bar (hidden by default) -->
+            <div class="data-table-info" id="data-table-info">
+                <span id="data-table-status">No data</span>
+            </div>
+            <div id="plot-container"></div>
+            <div class="data-table-container" id="data-table-container"></div>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-panel">
+            <div class="stats-title">Flight Statistics</div>
+            <div class="stats-projectile-indicator" id="stats-projectile-indicator">
+                <span class="projectile-color-dot" style="background: #5ce0d2;"></span>
+                <span>Projectile 1</span>
+            </div>
+
+            <div class="stat-item">
+                <span class="stat-label">Max Altitude</span>
+                <span class="stat-value" id="stat-maxalt">—<span class="stat-unit">m</span></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Ground Range</span>
+                <span class="stat-value" id="stat-range">—<span class="stat-unit">m</span></span>
+            </div>
+            <hr class="stats-divider">
+            <div class="stat-item">
+                <span class="stat-label">Flight Time</span>
+                <span class="stat-value" id="stat-time">—<span class="stat-unit">s</span></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Impact Speed</span>
+                <span class="stat-value" id="stat-impact">—<span class="stat-unit">m/s</span></span>
+            </div>
+            <hr class="stats-divider">
+            <div class="stat-item">
+                <span class="stat-label">Max Speed</span>
+                <span class="stat-value" id="stat-maxspeed">—<span class="stat-unit">m/s</span></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Max Mach</span>
+                <span class="stat-value" id="stat-maxmach">—</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Max Dynamic Pressure</span>
+                <span class="stat-value" id="stat-maxq">—<span class="stat-unit">Pa</span></span>
+            </div>
+
+            <div class="stats-bottom">
+                <hr class="stats-divider">
+                <div class="stat-item">
+                    <span class="stat-label">Data Points</span>
+                    <span class="stat-value" id="stat-points" style="font-size:14px;">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+    <span><span class="status-dot status-ready" id="status-dot"></span><span id="status-text">Ready</span></span>
+    <span>Steps: <strong id="footer-steps">0</strong></span>
+    <span>Sim Time: <strong id="footer-simtime">0.000</strong> s</span>
+</div>
+
+<script>
+// ============================================================
+// SECTION 1: PHYSICAL CONSTANTS
+// ============================================================
+const G0 = 9.80665;          // Standard gravity (m/s^2)
+const R_AIR = 287.05287;     // Specific gas constant dry air (J/(kg·K))
+const GAMMA_AIR = 1.4;       // Ratio of specific heats
+const R_EARTH = 6356766.0;   // Earth mean radius (m)
+
+// US Standard Atmosphere 1976 — 7 layers
+const ATM_LAYERS = [
+    { h: 0,     L: -0.0065, T: 288.150, P: 101325.0  },
+    { h: 11000,  L:  0.0,    T: 216.650, P: 22632.00  },
+    { h: 20000,  L:  0.001,  T: 216.650, P: 5474.800  },
+    { h: 32000,  L:  0.0028, T: 228.650, P: 868.0100  },
+    { h: 47000,  L:  0.0,    T: 270.650, P: 110.9000  },
+    { h: 51000,  L: -0.0028, T: 270.650, P: 66.93800  },
+    { h: 71000,  L: -0.002,  T: 214.650, P: 3.956400  }
+];
+
+// ============================================================
+// SECTION 2: ATMOSPHERE MODEL
+// ============================================================
+function getAtmosphere(hGeometric) {
+    // Convert geometric to geopotential altitude
+    let h = (R_EARTH * hGeometric) / (R_EARTH + Math.max(hGeometric, 0));
+    if (h < 0) h = 0;
+    if (h > 84852) h = 84852;
+
+    // Find layer
+    let li = 0;
+    for (let i = ATM_LAYERS.length - 1; i >= 0; i--) {
+        if (h >= ATM_LAYERS[i].h) { li = i; break; }
+    }
+
+    const layer = ATM_LAYERS[li];
+    const dh = h - layer.h;
+    let T, P;
+
+    if (layer.L !== 0) {
+        T = layer.T + layer.L * dh;
+        const exp = -G0 / (layer.L * R_AIR);
+        P = layer.P * Math.pow(T / layer.T, exp);
+    } else {
+        T = layer.T;
+        P = layer.P * Math.exp(-G0 * dh / (R_AIR * T));
+    }
+
+    const rho = P / (R_AIR * T);
+    const a = Math.sqrt(GAMMA_AIR * R_AIR * T);
+
+    return { T, P, rho, a };
+}
+
+// ============================================================
+// SECTION 3: DRAG COEFFICIENT MODEL (Cd MULTIPLIER vs MACH)
+// ============================================================
+function getDragMultiplier(M) {
+    if (M < 0.6) {
+        return 1.0;
+    } else if (M < 1.0) {
+        // Smooth cubic transonic drag rise: 1.0 at M=0.6, 2.5 at M=1.0
+        const x = (M - 0.6) / 0.4;
+        return 1.0 + 1.5 * x * x * x;
+    } else {
+        // Supersonic decline: 2.5 at M=1.0, asymptotes to 1.0
+        return 1.0 + 1.5 / (M * M);
+    }
+}
+
+// ============================================================
+// SECTION 4: GRAVITY MODEL
+// ============================================================
+function getGravity(hGeometric) {
+    const r = R_EARTH + Math.max(hGeometric, 0);
+    return G0 * (R_EARTH / r) * (R_EARTH / r);
+}
+
+// ============================================================
+// SECTION 5: EQUATIONS OF MOTION
+// ============================================================
+function derivatives(t, state, params) {
+    const [x, y, z, vx, vy, vz] = state;
+    const altitude = z + params.launchAlt;
+
+    const atm = getAtmosphere(altitude);
+    const g = getGravity(altitude);
+
+    // Velocity relative to air (accounting for wind)
+    const vrx = vx - params.windX;
+    const vry = vy - params.windY;
+    const vrz = vz - params.windZ;
+    const speedRel = Math.sqrt(vrx * vrx + vry * vry + vrz * vrz);
+
+    // Mach number and effective drag coefficient
+    const mach = speedRel / atm.a;
+    const cdEff = params.cd0 * getDragMultiplier(mach);
+
+    // Drag acceleration magnitude
+    const q = 0.5 * atm.rho * speedRel * speedRel;
+    const dragAccel = (q * cdEff * params.area) / params.mass;
+
+    let ax, ay, az;
+    if (speedRel > 1e-12) {
+        ax = -dragAccel * vrx / speedRel;
+        ay = -dragAccel * vry / speedRel;
+        az = -dragAccel * vrz / speedRel - g;
+    } else {
+        ax = 0;
+        ay = 0;
+        az = -g;
+    }
+
+    return [vx, vy, vz, ax, ay, az];
+}
+
+// ============================================================
+// SECTION 6: RK4 INTEGRATOR
+// ============================================================
+function rk4Step(t, state, dt, derivsFn) {
+    const k1 = derivsFn(t, state);
+    const s2 = state.map((s, i) => s + 0.5 * dt * k1[i]);
+    const k2 = derivsFn(t + 0.5 * dt, s2);
+    const s3 = state.map((s, i) => s + 0.5 * dt * k2[i]);
+    const k3 = derivsFn(t + 0.5 * dt, s3);
+    const s4 = state.map((s, i) => s + dt * k3[i]);
+    const k4 = derivsFn(t + dt, s4);
+
+    return state.map((s, i) =>
+        s + (dt / 6.0) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])
+    );
+}
+
+// ============================================================
+// SECTION 6b: SENSOR TYPE REGISTRY & NOISE UTILITY
+// ============================================================
+const SENSOR_TYPES = {
+    // Position
+    gps_x:            { field: 'x',                label: 'GPS X',              unit: 'm',      category: 'Position' },
+    gps_y:            { field: 'y',                label: 'GPS Y',              unit: 'm',      category: 'Position' },
+    gps_altitude:     { field: 'altitude',         label: 'GPS Altitude',       unit: 'm',      category: 'Position' },
+    // Velocity
+    speed:            { field: 'speed',            label: 'Speed',              unit: 'm/s',    category: 'Velocity' },
+    velocity_x:       { field: 'vx',              label: 'Velocity X',         unit: 'm/s',    category: 'Velocity' },
+    velocity_y:       { field: 'vy',              label: 'Velocity Y',         unit: 'm/s',    category: 'Velocity' },
+    velocity_z:       { field: 'vz',              label: 'Velocity Z',         unit: 'm/s',    category: 'Velocity' },
+    // Orientation
+    pitch:            { field: 'pitch',            label: 'Pitch',              unit: 'deg',    category: 'Orientation' },
+    yaw:              { field: 'yaw',              label: 'Yaw',               unit: 'deg',    category: 'Orientation' },
+    roll:             { field: 'roll',             label: 'Roll',              unit: 'deg',    category: 'Orientation' },
+    // Angular Rate (Gyroscope)
+    pitch_rate:       { field: '_pitch_rate',      label: 'Pitch Rate',         unit: 'deg/s',  category: 'Angular Rate (Gyro)' },
+    yaw_rate:         { field: '_yaw_rate',        label: 'Yaw Rate',           unit: 'deg/s',  category: 'Angular Rate (Gyro)' },
+    roll_rate:        { field: '_roll_rate',        label: 'Roll Rate',          unit: 'deg/s',  category: 'Angular Rate (Gyro)' },
+    // Acceleration (World Frame)
+    accel_x:          { field: '_accel_x',         label: 'Accel X',            unit: 'm/s²',   category: 'Acceleration (World)' },
+    accel_y:          { field: '_accel_y',         label: 'Accel Y',            unit: 'm/s²',   category: 'Acceleration (World)' },
+    accel_z:          { field: '_accel_z',         label: 'Accel Z',            unit: 'm/s²',   category: 'Acceleration (World)' },
+    // Acceleration (Body/IMU)
+    imu_forward:      { field: 'imu_forward',      label: 'IMU Forward',        unit: 'm/s²',   category: 'Acceleration (Body/IMU)' },
+    imu_right:        { field: 'imu_right',         label: 'IMU Right',          unit: 'm/s²',   category: 'Acceleration (Body/IMU)' },
+    imu_down:         { field: 'imu_down',          label: 'IMU Down',           unit: 'm/s²',   category: 'Acceleration (Body/IMU)' },
+    // Atmosphere
+    air_density:      { field: 'air_density',       label: 'Air Density',        unit: 'kg/m³',  category: 'Atmosphere' },
+    mach_number:      { field: 'mach',              label: 'Mach Number',        unit: '',       category: 'Atmosphere' },
+    dynamic_pressure: { field: 'dynamic_pressure',  label: 'Dynamic Pressure',   unit: 'Pa',     category: 'Atmosphere' },
+    temperature:      { field: '_temperature',       label: 'Temperature',        unit: 'K',      category: 'Atmosphere' },
+    speed_of_sound:   { field: '_speed_of_sound',    label: 'Speed of Sound',     unit: 'm/s',    category: 'Atmosphere' },
+    // Other
+    baro_altitude:    { field: '_baro_altitude',    label: 'Barometric Alt',     unit: 'm',      category: 'Other' },
+    range:            { field: '_range',            label: 'Range',              unit: 'm',      category: 'Other' }
+};
+
+function gaussianRandom() {
+    let u, v, s;
+    do {
+        u = Math.random() * 2 - 1;
+        v = Math.random() * 2 - 1;
+        s = u * u + v * v;
+    } while (s >= 1 || s === 0);
+    return u * Math.sqrt(-2 * Math.log(s) / s);
+}
+
+// ============================================================
+// SECTION 7: DATA RECORDING
+// ============================================================
+function makeDataPoint(t, state, params) {
+    const [x, y, z, vx, vy, vz] = state;
+    const altitude = z + params.launchAlt;
+    const atm = getAtmosphere(altitude);
+
+    const vrx = vx - params.windX;
+    const vry = vy - params.windY;
+    const vrz = vz - params.windZ;
+    const speedRel = Math.sqrt(vrx * vrx + vry * vry + vrz * vrz);
+    const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
+    const mach = speedRel / atm.a;
+    const cdEff = params.cd0 * getDragMultiplier(mach);
+    const q = 0.5 * atm.rho * speedRel * speedRel;
+    const accelDrag = (q * cdEff * params.area) / params.mass;
+
+    // Orientation derived from velocity vector
+    const horizSpeed = Math.sqrt(vx * vx + vy * vy);
+    let pitch, yaw;
+    if (speed > 1e-12) {
+        pitch = Math.atan2(vz, horizSpeed) * 180 / Math.PI;
+        yaw = Math.atan2(vy, vx) * 180 / Math.PI;
+    } else {
+        pitch = 0;
+        yaw = 0;
+    }
+    const roll = params.roll || 0;
+
+    // IMU body-frame specific force (non-gravitational acceleration in body frame)
+    // Specific force = total accel - gravity = drag accel only
+    // Drag world-frame vector: opposes relative velocity
+    const g = getGravity(altitude);
+    let dragAx = 0, dragAy = 0, dragAz = 0;
+    if (speedRel > 1e-12) {
+        dragAx = -accelDrag * vrx / speedRel;
+        dragAy = -accelDrag * vry / speedRel;
+        dragAz = -accelDrag * vrz / speedRel;
+    }
+    // Specific force in world frame = drag + (0,0,0) for non-grav
+    // An IMU also senses the reaction to gravity (reads +g at rest), so:
+    // IMU measures: specific_force = a_coordinate - g = (drag + grav) - grav = drag ... NO
+    // IMU measures: specific_force = a_non_gravitational = drag_accel
+    // But physically, accelerometer reads the "proper acceleration" which includes
+    // the support force. In free fall it reads 0. At rest it reads [0,0,+g].
+    // For a ballistic projectile (no thrust, no support), specific force = drag only.
+    // However, users typically expect IMU to read gravity when not accelerating,
+    // so we include gravity reaction: IMU = drag + [0,0,+g]
+    const sfx = dragAx;
+    const sfy = dragAy;
+    const sfz = dragAz + g;  // +g because accelerometer senses reaction to gravity
+
+    // Rotate specific force from world frame to body frame
+    // Body frame: forward = velocity direction, right = perpendicular in horizontal plane, up completes RHS
+    // Rotation: yaw about Z, then pitch about new Y, then roll about new X
+    const pitchRad = Math.atan2(vz, horizSpeed);  // reuse, but in radians
+    const yawRad = Math.atan2(vy, vx);
+    const rollRad = (params.roll || 0) * Math.PI / 180;
+    const cp = Math.cos(pitchRad), sp = Math.sin(pitchRad);
+    const cy = Math.cos(yawRad),   sy = Math.sin(yawRad);
+    const cr = Math.cos(rollRad),  sr = Math.sin(rollRad);
+
+    // World-to-body rotation: R = Rx(roll) * Ry(-pitch) * Rz(-yaw)
+    // Forward (body X) = along velocity: [cy*cp, sy*cp, sp]
+    // Right (body Y) before roll = [-sy, cy, 0], then roll rotates Y/Z
+    // Applying full rotation matrix:
+    let imu_forward, imu_right, imu_down;
+    if (speed > 1e-12) {
+        // Body X (forward) components of specific force
+        imu_forward = sfx * cy * cp + sfy * sy * cp + sfz * sp;
+        // Body Y (right) before roll
+        const rightNoRoll = -sfx * sy + sfy * cy;
+        const downNoRoll  = -sfx * cy * sp - sfy * sy * sp + sfz * cp;
+        // Apply roll rotation
+        imu_right = cr * rightNoRoll + sr * downNoRoll;
+        imu_down  = -sr * rightNoRoll + cr * downNoRoll;
+    } else {
+        // At zero speed, body frame = world frame (identity)
+        imu_forward = sfx;
+        imu_right = sfy;
+        imu_down = sfz;
+    }
+
+    return {
+        time: t, x, y, z, vx, vy, vz,
+        speed, mach, altitude,
+        air_density: atm.rho,
+        drag_coefficient: cdEff,
+        acceleration: accelDrag,
+        dynamic_pressure: q,
+        pitch, yaw, roll,
+        imu_forward, imu_right, imu_down
+    };
+}
+
+// ============================================================
+// SECTION 8: MULTI-PROJECTILE STATE & SIMULATION DRIVER
+// ============================================================
+const PROJECTILE_COLORS = ['#5ce0d2','#e94560','#f0c040','#7b68ee','#ff8c42','#a8e06c','#ff6b9d','#48bfe3'];
+
+let projectiles = [];
+let activeProjectileId = 0;
+let nextProjectileId = 0;
+
+function getDefaultParams() {
+    return {
+        velocity: 85, elevation: 80, azimuth: 0,
+        launchAlt: 0, groundAlt: 0, roll: 0,
+        mass: 0.6, area: 0.00336, cd0: 0.30,
+        windX: 0, windY: 0, windZ: 0,
+        dt: 0.01, maxTime: 600,
+        dragStages: [],
+        sensors: [],
+        targetAltitude: 225,
+        guidanceParam1: 0,
+        guidanceParam2: 0,
+        guidanceParam3: 0
+    };
+}
+
+function readInputs() {
+    const val = id => parseFloat(document.getElementById(id).value) || 0;
+    return {
+        velocity:  val('in-velocity'),
+        elevation: val('in-elevation'),
+        azimuth:   val('in-azimuth'),
+        launchAlt: val('in-launch-alt'),
+        groundAlt: val('in-ground-alt'),
+        roll:      val('in-roll'),
+        mass:      Math.max(val('in-mass'), 0.001),
+        area:      Math.max(val('in-area'), 1e-6),
+        cd0:       Math.max(val('in-cd'), 0),
+        windX:     val('in-wind-x'),
+        windY:     val('in-wind-y'),
+        windZ:     val('in-wind-z'),
+        dt:        Math.max(val('in-dt'), 0.0001),
+        maxTime:   Math.max(val('in-maxtime'), 1),
+        dragStages: readDragStages(),
+        sensors: readSensors(),
+        targetAltitude: val('guidance-target-alt'),
+        guidanceParam1: val('guidance-param-1'),
+        guidanceParam2: val('guidance-param-2'),
+        guidanceParam3: val('guidance-param-3')
+    };
+}
+
+function saveActiveParams() {
+    const proj = projectiles.find(p => p.id === activeProjectileId);
+    if (proj) proj.params = readInputs();
+}
+
+function loadParamsToSidebar(id) {
+    const proj = projectiles.find(p => p.id === id);
+    if (!proj) return;
+    const p = proj.params;
+    document.getElementById('in-velocity').value = p.velocity;
+    document.getElementById('in-elevation').value = p.elevation;
+    document.getElementById('in-azimuth').value = p.azimuth;
+    document.getElementById('in-launch-alt').value = p.launchAlt;
+    document.getElementById('in-ground-alt').value = p.groundAlt;
+    document.getElementById('in-roll').value = p.roll || 0;
+    document.getElementById('in-mass').value = p.mass;
+    document.getElementById('in-area').value = p.area;
+    document.getElementById('in-cd').value = p.cd0;
+    document.getElementById('in-wind-x').value = p.windX;
+    document.getElementById('in-wind-y').value = p.windY;
+    document.getElementById('in-wind-z').value = p.windZ;
+    document.getElementById('in-dt').value = p.dt;
+    document.getElementById('in-maxtime').value = p.maxTime;
+    rebuildDragStagesUI(p.dragStages);
+    rebuildSensorsUI(p.sensors);
+    document.getElementById('guidance-target-alt').value = p.targetAltitude || 3048;
+    document.getElementById('guidance-param-1').value = p.guidanceParam1 || 0;
+    document.getElementById('guidance-param-2').value = p.guidanceParam2 || 0;
+    document.getElementById('guidance-param-3').value = p.guidanceParam3 || 0;
+}
+
+function simulateOne(params) {
+    // Shallow copy params so drag stage mutations don't persist
+    const p = Object.assign({}, params);
+    p.dragStages = params.dragStages.map(s => Object.assign({}, s));
+
+    const elRad = p.elevation * Math.PI / 180;
+    const azRad = p.azimuth * Math.PI / 180;
+    const v0 = p.velocity;
+    const vx0 = v0 * Math.cos(elRad) * Math.cos(azRad);
+    const vy0 = v0 * Math.cos(elRad) * Math.sin(azRad);
+    const vz0 = v0 * Math.sin(elRad);
+
+    let state = [0, 0, 0, vx0, vy0, vz0];
+    let t = 0;
+    const dt = p.dt;
+    const maxSteps = Math.ceil(p.maxTime / dt);
+
+    let pastApogee = false;
+    let apogeeTime = null;
+    const stageDeployed = p.dragStages.map(() => false);
+
+    // Initialize guidance WASM if active
+    const useGuidance = guidanceEnabled && guidanceModule;
+    const baseCd0 = p.cd0;
+    const baseArea = p.area;
+    if (useGuidance) {
+        initLiveSensorState(p.sensors || []);
+        guidanceFnSetBuf(guidanceBufPtr);
+        // Write base Cd/area into shared buffer before init so guidance can read them
+        const heap = guidanceModule.HEAPF32;
+        const base = guidanceBufPtr >> 2;
+        heap[base + 46] = baseCd0;
+        heap[base + 47] = baseArea;
+        guidanceFnInit();
+    }
+
+    let lastPredictedApogee = 0;
+    const data = [];
+    const dp0 = makeDataPoint(t, state, p);
+    if (useGuidance) { dp0.guidance_cd = p.cd0; dp0.guidance_area = p.area; dp0.guidance_predicted_apogee = 0; }
+    data.push(dp0);
+
+    for (let step = 0; step < maxSteps; step++) {
+        const prevState = state.slice();
+        state = rk4Step(t, state, dt, (tt, ss) => derivatives(tt, ss, p));
+        t += dt;
+
+        if (!pastApogee && prevState[5] > 0 && state[5] <= 0) {
+            pastApogee = true;
+            apogeeTime = t;
+        }
+
+        // --- Guidance WASM control ---
+        if (useGuidance) {
+            const dp = makeDataPoint(t, state, p);
+            const sensorVals = computeLiveSensorValues(t, state, p);
+            const output = callGuidanceUpdate(t, p.dt, state, p, dp, sensorVals, pastApogee, p.targetAltitude || 0, baseCd0, baseArea);
+            if (output) {
+                if (output.cd > 0) p.cd0 = output.cd;
+                if (output.area > 0) p.area = output.area;
+                lastPredictedApogee = output.predictedApogee || lastPredictedApogee;
+            }
+        }
+
+        // Drag stages only run when guidance is NOT active
+        if (!useGuidance) {
+            for (let si = 0; si < p.dragStages.length; si++) {
+                if (stageDeployed[si]) continue;
+                const stage = p.dragStages[si];
+                let triggered = false;
+                if (stage.trigger === 'apogee') {
+                    if (pastApogee && t >= apogeeTime + stage.apogeeDelay) triggered = true;
+                } else if (stage.trigger === 'time') {
+                    if (t >= stage.time) triggered = true;
+                } else if (stage.trigger === 'altitude') {
+                    const altNow = state[2] + p.launchAlt;
+                    if (pastApogee && altNow <= stage.alt) triggered = true;
+                }
+                if (triggered) {
+                    stageDeployed[si] = true;
+                    p.cd0 = stage.cd;
+                    p.area = stage.area;
+                }
+            }
+        }
+
+        const dpRec = makeDataPoint(t, state, p);
+        if (useGuidance) { dpRec.guidance_cd = p.cd0; dpRec.guidance_area = p.area; dpRec.guidance_predicted_apogee = lastPredictedApogee; }
+        data.push(dpRec);
+
+        const zGround = p.groundAlt - p.launchAlt;
+        if (state[2] <= zGround) {
+            const z0 = prevState[2] - zGround;
+            const z1 = state[2] - zGround;
+            if (z1 !== z0) {
+                const frac = z0 / (z0 - z1);
+                const tImpact = t - dt + frac * dt;
+                const impactState = prevState.map((s, i) => s + frac * (state[i] - s));
+                impactState[2] = zGround;
+                const impactDp = makeDataPoint(tImpact, impactState, p);
+                if (useGuidance) { impactDp.guidance_cd = p.cd0; impactDp.guidance_area = p.area; impactDp.guidance_predicted_apogee = lastPredictedApogee; }
+                data[data.length - 1] = impactDp;
+            }
+            break;
+        }
+    }
+
+    // Apply sensor post-processing (noise, update rate, etc.)
+    applySensors(data, params.sensors);
+
+    return data;
+}
+
+function applySensors(data, sensors) {
+    if (!sensors || sensors.length === 0 || data.length === 0) return;
+
+    // Pre-compute derived fields on all data points
+    for (let i = 0; i < data.length; i++) {
+        // World-frame accelerations (finite difference)
+        if (i < data.length - 1) {
+            const dt = data[i + 1].time - data[i].time;
+            if (dt > 0) {
+                data[i]._accel_x = (data[i + 1].vx - data[i].vx) / dt;
+                data[i]._accel_y = (data[i + 1].vy - data[i].vy) / dt;
+                data[i]._accel_z = (data[i + 1].vz - data[i].vz) / dt;
+            } else {
+                data[i]._accel_x = 0; data[i]._accel_y = 0; data[i]._accel_z = 0;
+            }
+        } else {
+            data[i]._accel_x = i > 0 ? data[i - 1]._accel_x : 0;
+            data[i]._accel_y = i > 0 ? data[i - 1]._accel_y : 0;
+            data[i]._accel_z = i > 0 ? data[i - 1]._accel_z : 0;
+        }
+
+        // Angular rates (finite difference from orientation, with yaw unwrapping)
+        if (i < data.length - 1) {
+            const dt = data[i + 1].time - data[i].time;
+            if (dt > 0) {
+                data[i]._pitch_rate = (data[i + 1].pitch - data[i].pitch) / dt;
+                // Unwrap yaw for ±180° discontinuity
+                let dyaw = data[i + 1].yaw - data[i].yaw;
+                if (dyaw > 180) dyaw -= 360;
+                if (dyaw < -180) dyaw += 360;
+                data[i]._yaw_rate = dyaw / dt;
+                data[i]._roll_rate = (data[i + 1].roll - data[i].roll) / dt;
+            } else {
+                data[i]._pitch_rate = 0; data[i]._yaw_rate = 0; data[i]._roll_rate = 0;
+            }
+        } else {
+            data[i]._pitch_rate = i > 0 ? data[i - 1]._pitch_rate : 0;
+            data[i]._yaw_rate   = i > 0 ? data[i - 1]._yaw_rate : 0;
+            data[i]._roll_rate  = i > 0 ? data[i - 1]._roll_rate : 0;
+        }
+
+        // Atmosphere-derived values
+        const atm = getAtmosphere(data[i].altitude);
+        data[i]._temperature = atm.T;
+        data[i]._speed_of_sound = atm.a;
+
+        // Barometric altitude (truth = geometric altitude)
+        data[i]._baro_altitude = data[i].altitude;
+
+        // Range (horizontal distance from launch)
+        data[i]._range = Math.sqrt(data[i].x * data[i].x + data[i].y * data[i].y);
+    }
+
+    // Apply each sensor with noise and update rate
+    const usedNames = new Set();
+    for (const sensor of sensors) {
+        const sensorType = SENSOR_TYPES[sensor.dataType];
+        if (!sensorType) continue;
+
+        const field = sensorType.field;
+
+        // Deduplicate column names
+        let colName = 'sensor_' + sensor.name.replace(/[^a-zA-Z0-9_]/g, '_');
+        let baseName = colName;
+        let suffix = 2;
+        while (usedNames.has(colName)) {
+            colName = baseName + '_' + suffix++;
+        }
+        usedNames.add(colName);
+
+        const updateInterval = sensor.updateRate > 0 ? (1.0 / sensor.updateRate) : 0;
+        let lastUpdateTime = -Infinity;
+        let lastReading = 0;
+        let drift = 0; // random walk accumulator
+
+        for (let i = 0; i < data.length; i++) {
+            const t = data[i].time;
+            const trueValue = data[i][field] !== undefined ? data[i][field] : 0;
+
+            // Check if sensor should update at this timestep
+            const shouldUpdate = (updateInterval <= 0) || (t - lastUpdateTime >= updateInterval - 1e-12);
+
+            if (shouldUpdate) {
+                lastUpdateTime = t;
+                let reading = trueValue + sensor.bias;
+
+                if (sensor.noiseType === 'gaussian') {
+                    reading += gaussianRandom() * sensor.noiseStdDev;
+                } else if (sensor.noiseType === 'random_walk') {
+                    drift += gaussianRandom() * sensor.noiseStdDev;
+                    reading += drift;
+                }
+
+                lastReading = reading;
+            }
+
+            data[i][colName] = lastReading;
+        }
+    }
+}
+
+// ============================================================
+// SECTION 8b: GUIDANCE WASM INTEGRATION
+// ============================================================
+
+let guidanceModule = null;       // Emscripten Module instance
+let guidanceBufPtr = 0;          // Pointer to float[50] in WASM heap
+let guidanceEnabled = false;
+let guidanceFnInit = null;       // cwrap'd guidance_init
+let guidanceFnUpdate = null;     // cwrap'd guidance_update
+let guidanceFnSetBuf = null;     // cwrap'd sim_set_buffer
+
+function guidanceLog(msg, isError) {
+    const log = document.getElementById('guidance-log');
+    const line = document.createElement('div');
+    line.textContent = msg;
+    if (isError) line.style.color = '#e94560';
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+}
+
+async function loadGuidanceModule(jsText) {
+    const log = document.getElementById('guidance-log');
+    log.innerHTML = '';
+    guidanceLog('Loading module...');
+
+    try {
+        // Clean up previous module
+        if (guidanceModule) {
+            unloadGuidanceModule();
+        }
+
+        // Remove any previously injected guidance script
+        const oldScript = document.getElementById('guidance-script');
+        if (oldScript) oldScript.remove();
+        if (typeof createGuidanceModule !== 'undefined') {
+            window.createGuidanceModule = undefined;
+        }
+
+        // Inject the Emscripten JS as a script element
+        const blob = new Blob([jsText], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        const script = document.createElement('script');
+        script.id = 'guidance-script';
+        script.src = url;
+        document.head.appendChild(script);
+
+        await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Failed to load script'));
+        });
+        URL.revokeObjectURL(url);
+
+        // createGuidanceModule should now be a global (from -sEXPORT_NAME)
+        if (typeof createGuidanceModule !== 'function') {
+            throw new Error('Module does not export createGuidanceModule. Check compile flags.');
+        }
+
+        guidanceModule = await createGuidanceModule();
+
+        // Wrap exported functions
+        guidanceFnInit = guidanceModule.cwrap('guidance_init', null, []);
+        guidanceFnUpdate = guidanceModule.cwrap('guidance_update', null, []);
+        guidanceFnSetBuf = guidanceModule.cwrap('sim_set_buffer', null, ['number']);
+
+        // Allocate shared buffer in WASM heap (50 floats = 192 bytes)
+        guidanceBufPtr = guidanceModule._malloc(50 * 4);
+        if (!guidanceBufPtr) throw new Error('Failed to allocate shared buffer');
+        guidanceFnSetBuf(guidanceBufPtr);
+
+        // Enable the checkbox
+        const cb = document.getElementById('guidance-enabled');
+        cb.disabled = false;
+        cb.checked = true;
+        guidanceEnabled = true;
+
+        const status = document.getElementById('guidance-filename');
+        status.textContent = 'Module loaded';
+        status.className = 'guidance-status loaded';
+
+        guidanceLog('Module loaded successfully.');
+        guidanceLog('Shared buffer: ' + (50 * 4) + ' bytes at 0x' + guidanceBufPtr.toString(16));
+        updateGuidanceSensorMap();
+
+    } catch (err) {
+        const status = document.getElementById('guidance-filename');
+        status.textContent = 'Load failed';
+        status.className = 'guidance-status error';
+        guidanceLog('ERROR: ' + err.message, true);
+        guidanceEnabled = false;
+        document.getElementById('guidance-enabled').checked = false;
+        document.getElementById('guidance-enabled').disabled = true;
+    }
+}
+
+function unloadGuidanceModule() {
+    if (guidanceModule && guidanceBufPtr) {
+        try { guidanceModule._free(guidanceBufPtr); } catch (e) {}
+    }
+    guidanceModule = null;
+    guidanceBufPtr = 0;
+    guidanceEnabled = false;
+    guidanceFnInit = null;
+    guidanceFnUpdate = null;
+    guidanceFnSetBuf = null;
+}
+
+function callGuidanceUpdate(t, dt, state, params, dataPoint, sensorValues, pastApogee, targetAlt, baseCd, baseArea) {
+    if (!guidanceEnabled || !guidanceModule) return null;
+
+    const heap = guidanceModule.HEAPF32;
+    const base = guidanceBufPtr >> 2; // float index
+
+    // Write inputs
+    heap[base + 0] = t;
+    heap[base + 1] = dt;
+    heap[base + 2] = state[0]; // x
+    heap[base + 3] = state[1]; // y
+    heap[base + 4] = state[2]; // z
+    heap[base + 5] = state[3]; // vx
+    heap[base + 6] = state[4]; // vy
+    heap[base + 7] = state[5]; // vz
+    heap[base + 8] = dataPoint.speed;
+    heap[base + 9] = dataPoint.altitude;
+    heap[base + 10] = dataPoint.mach;
+    heap[base + 11] = dataPoint.dynamic_pressure;
+    heap[base + 12] = dataPoint.air_density;
+    heap[base + 13] = dataPoint.pitch;
+    heap[base + 14] = dataPoint.yaw;
+    heap[base + 15] = dataPoint.roll;
+    heap[base + 16] = dataPoint.imu_forward;
+    heap[base + 17] = dataPoint.imu_right;
+    heap[base + 18] = dataPoint.imu_down;
+    heap[base + 19] = params.cd0;
+    heap[base + 20] = params.area;
+    heap[base + 21] = pastApogee ? 1.0 : 0.0;
+    heap[base + 22] = targetAlt;
+    heap[base + 23] = sensorValues.length;
+    for (let i = 0; i < Math.min(sensorValues.length, 16); i++) {
+        heap[base + 24 + i] = sensorValues[i];
+    }
+    // Clear outputs
+    heap[base + 40] = 0;
+    heap[base + 41] = 0;
+    heap[base + 45] = 0;
+    // Guidance parameters
+    heap[base + 42] = params.guidanceParam1 || 0;
+    heap[base + 43] = params.guidanceParam2 || 0;
+    heap[base + 44] = params.guidanceParam3 || 0;
+    heap[base + 46] = baseCd || 0;
+    heap[base + 47] = baseArea || 0;
+    // Atmosphere: compute P and T for guidance sensor model
+    const atm = getAtmosphere(dataPoint.altitude);
+    heap[base + 48] = atm.P;
+    heap[base + 49] = atm.T;
+
+    // Call C++ guidance_update()
+    guidanceFnUpdate();
+
+    // Read outputs
+    return {
+        cd: heap[base + 40],
+        area: heap[base + 41],
+        predictedApogee: heap[base + 45]
+    };
+}
+
+// --- Live sensor computation (inline, for guidance timestep access) ---
+
+let liveSensorState = []; // [{lastUpdateTime, lastReading, drift}]
+
+function initLiveSensorState(sensors) {
+    liveSensorState = (sensors || []).map(() => ({
+        lastUpdateTime: -Infinity, lastReading: 0, drift: 0
+    }));
+}
+
+function computeLiveSensorValues(t, state, params) {
+    const sensors = params.sensors || [];
+    if (sensors.length === 0) return [];
+
+    const [x, y, z, vx, vy, vz] = state;
+    const altitude = z + params.launchAlt;
+    const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
+    const atm = getAtmosphere(altitude);
+
+    const vrx = vx - params.windX;
+    const vry = vy - params.windY;
+    const vrz = vz - params.windZ;
+    const speedRel = Math.sqrt(vrx * vrx + vry * vry + vrz * vrz);
+    const mach = speedRel / atm.a;
+    const q = 0.5 * atm.rho * speedRel * speedRel;
+    const cdEff = params.cd0 * getDragMultiplier(mach);
+    const accelDrag = (q * cdEff * params.area) / params.mass;
+
+    const horizSpeed = Math.sqrt(vx * vx + vy * vy);
+    const pitch = speed > 1e-12 ? Math.atan2(vz, horizSpeed) * 180 / Math.PI : 0;
+    const yaw = speed > 1e-12 ? Math.atan2(vy, vx) * 180 / Math.PI : 0;
+    const roll = params.roll || 0;
+
+    // IMU body frame
+    const g = getGravity(altitude);
+    let dragAx = 0, dragAy = 0, dragAz = 0;
+    if (speedRel > 1e-12) {
+        dragAx = -accelDrag * vrx / speedRel;
+        dragAy = -accelDrag * vry / speedRel;
+        dragAz = -accelDrag * vrz / speedRel;
+    }
+    const sfx = dragAx, sfy = dragAy, sfz = dragAz + g;
+    const pitchRad = Math.atan2(vz, horizSpeed);
+    const yawRad = Math.atan2(vy, vx);
+    const rollRad = roll * Math.PI / 180;
+    const cp = Math.cos(pitchRad), sp = Math.sin(pitchRad);
+    const cy = Math.cos(yawRad), sy = Math.sin(yawRad);
+    const cr = Math.cos(rollRad), sr = Math.sin(rollRad);
+    let imu_forward, imu_right, imu_down;
+    if (speed > 1e-12) {
+        imu_forward = sfx * cy * cp + sfy * sy * cp + sfz * sp;
+        const rightNoRoll = -sfx * sy + sfy * cy;
+        const downNoRoll = -sfx * cy * sp - sfy * sy * sp + sfz * cp;
+        imu_right = cr * rightNoRoll + sr * downNoRoll;
+        imu_down = -sr * rightNoRoll + cr * downNoRoll;
+    } else {
+        imu_forward = sfx; imu_right = sfy; imu_down = sfz;
+    }
+
+    // Build lookup for sensor field values
+    const fieldValues = {
+        x, y, altitude, speed, vx, vy, vz,
+        pitch, yaw, roll,
+        imu_forward, imu_right, imu_down,
+        air_density: atm.rho, mach, dynamic_pressure: q,
+        drag_coefficient: cdEff, acceleration: accelDrag,
+        _baro_altitude: altitude,
+        _range: Math.sqrt(x * x + y * y),
+        _temperature: atm.T,
+        _speed_of_sound: atm.a,
+        // Angular rates and world accel need prior data — use 0 for first step
+        _accel_x: 0, _accel_y: 0, _accel_z: 0,
+        _pitch_rate: 0, _yaw_rate: 0, _roll_rate: 0
+    };
+
+    const values = [];
+    for (let i = 0; i < sensors.length && i < 16; i++) {
+        const sensor = sensors[i];
+        const sensorType = SENSOR_TYPES[sensor.dataType];
+        if (!sensorType) { values.push(0); continue; }
+        const trueValue = fieldValues[sensorType.field] || 0;
+
+        const s = liveSensorState[i];
+        if (!s) { values.push(trueValue); continue; }
+        const updateInterval = sensor.updateRate > 0 ? (1.0 / sensor.updateRate) : 0;
+        const shouldUpdate = (updateInterval <= 0) || (t - s.lastUpdateTime >= updateInterval - 1e-12);
+
+        if (shouldUpdate) {
+            s.lastUpdateTime = t;
+            let reading = trueValue + (sensor.bias || 0);
+            if (sensor.noiseType === 'gaussian') {
+                reading += gaussianRandom() * (sensor.noiseStdDev || 0);
+            } else if (sensor.noiseType === 'random_walk') {
+                s.drift += gaussianRandom() * (sensor.noiseStdDev || 0);
+                reading += s.drift;
+            }
+            s.lastReading = reading;
+        }
+        values.push(s.lastReading);
+    }
+    return values;
+}
+
+function updateGuidanceSensorMap() {
+    const mapEl = document.getElementById('guidance-sensor-map');
+    const sensors = readSensors();
+    if (sensors.length === 0) {
+        mapEl.textContent = 'No sensors configured';
+        return;
+    }
+    mapEl.innerHTML = sensors.slice(0, 16).map((s, i) => {
+        const st = SENSOR_TYPES[s.dataType];
+        return `[${i}] ${s.name} (${st ? st.label : s.dataType})`;
+    }).join('<br>');
+}
+
+function runSimulation() {
+    saveActiveParams();
+    setStatus('running', 'Running...');
+    const startMs = performance.now();
+    let totalSteps = 0;
+    let maxSimTime = 0;
+
+    for (const proj of projectiles) {
+        proj.data = simulateOne(proj.params);
+        totalSteps += proj.data.length;
+        const lastT = proj.data[proj.data.length - 1].time;
+        if (lastT > maxSimTime) maxSimTime = lastT;
+    }
+
+    const elapsed = ((performance.now() - startMs) / 1000).toFixed(3);
+    renderCurrentView();
+    updateStatsForActiveProjectile();
+    document.getElementById('footer-steps').textContent = totalSteps;
+    document.getElementById('footer-simtime').textContent = maxSimTime.toFixed(3);
+    setStatus('done', `Done (${elapsed}s compute)`);
+}
+
+function resetSimulation() {
+    stopAnimation();
+    animState.datasets = null;
+    projectiles.forEach(p => p.data = null);
+    document.getElementById('footer-steps').textContent = '0';
+    document.getElementById('footer-simtime').textContent = '0.000';
+    setStatus('ready', 'Ready');
+    clearStats();
+    initPlot();
+}
+
+// ============================================================
+// SECTION 9: PLOTLY VISUALIZATION & VIEW SWITCHING
+// ============================================================
+let currentView = '3d';
+
+const plotConfig = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['toImage'] };
+
+function downsample(data, maxPts) {
+    if (data.length <= maxPts) return data;
+    const step = Math.ceil(data.length / maxPts);
+    return data.filter((_, i) => i % step === 0 || i === data.length - 1);
+}
+
+function get3DLayout() {
+    return {
+        scene: {
+            xaxis: { title: 'Downrange X (m)', color: '#7a8fa6', gridcolor: '#1e3348', zerolinecolor: '#2a4060' },
+            yaxis: { title: 'Crossrange Y (m)', color: '#7a8fa6', gridcolor: '#1e3348', zerolinecolor: '#2a4060' },
+            zaxis: { title: 'Altitude (m)', color: '#7a8fa6', gridcolor: '#1e3348', zerolinecolor: '#2a4060' },
+            bgcolor: '#0c1520',
+            camera: { eye: { x: 1.6, y: 1.6, z: 0.7 } },
+            aspectmode: 'auto'
+        },
+        paper_bgcolor: '#0f1923',
+        font: { color: '#e0e6ed', size: 11 },
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        showlegend: true,
+        legend: {
+            x: 0.01, y: 0.99,
+            bgcolor: 'rgba(26,45,66,0.85)',
+            bordercolor: '#253a52',
+            borderwidth: 1,
+            font: { color: '#e0e6ed', size: 10 }
+        }
+    };
+}
+
+function get2DLayout(yLabel, extras) {
+    const layout = {
+        paper_bgcolor: '#0f1923',
+        plot_bgcolor: '#0c1520',
+        font: { color: '#e0e6ed', size: 11 },
+        margin: { l: 60, r: 20, t: 20, b: 50 },
+        showlegend: true,
+        legend: {
+            x: 0.01, y: 0.99,
+            bgcolor: 'rgba(26,45,66,0.85)',
+            bordercolor: '#253a52',
+            borderwidth: 1,
+            font: { color: '#e0e6ed', size: 10 }
+        },
+        xaxis: { title: 'Time (s)', color: '#7a8fa6', gridcolor: '#1e3348', zerolinecolor: '#2a4060' },
+        yaxis: { title: yLabel, color: '#7a8fa6', gridcolor: '#1e3348', zerolinecolor: '#2a4060' }
+    };
+    if (extras) Object.assign(layout, extras);
+    return layout;
+}
+
+function buildDatasets() {
+    const withData = projectiles.filter(p => p.data && p.data.length > 0);
+    if (withData.length === 0) return null;
+    const budget = Math.floor(50000 / withData.length);
+    return withData.map(p => ({
+        color: p.color,
+        name: 'P' + (projectiles.indexOf(p) + 1),
+        data: downsample(p.data, budget)
+    }));
+}
+
+function renderCurrentView() {
+    const datasets = buildDatasets();
+    if (currentView === 'table') {
+        updateDataTable(datasets);
+        return;
+    }
+    if (currentView === 'custom') {
+        buildCustomViewFields();
+    }
+    if (!datasets) { initEmptyPlot(); return; }
+    switch (currentView) {
+        case '3d':          updatePlot3D(datasets); break;
+        case 'animation':   updatePlotAnimation(datasets); break;
+        case 'velocity':     updatePlotVelocity(datasets); break;
+        case 'accel':        updatePlotAcceleration(datasets); break;
+        case 'overview':     updatePlotOverview(datasets); break;
+        case 'orientation':  updatePlotOrientation(datasets); break;
+        case 'imu':          updatePlotIMU(datasets); break;
+        case 'sensors':      updatePlotSensors(datasets); break;
+        case 'guidance':     updatePlotGuidance(datasets); break;
+        case 'custom':       updatePlotCustom(datasets); break;
+    }
+}
+
+function initEmptyPlot() {
+    if (currentView === '3d' || currentView === 'animation') {
+        Plotly.newPlot('plot-container', [{
+            x: [], y: [], z: [], mode: 'lines', type: 'scatter3d',
+            line: { color: '#5ce0d2', width: 3 }, name: 'Trajectory'
+        }], get3DLayout(), plotConfig);
+    } else {
+        Plotly.newPlot('plot-container', [{
+            x: [], y: [], mode: 'lines', type: 'scatter',
+            line: { color: '#5ce0d2', width: 2 }, name: '—'
+        }], get2DLayout('—'), plotConfig);
+    }
+}
+
+function initPlot() { initEmptyPlot(); }
+
+// ---- 3D Trajectory ----
+
+function updatePlot3D(datasets) {
+    const traces = [];
+    const single = datasets.length === 1;
+    for (const ds of datasets) {
+        const data = ds.data;
+        const traj = {
+            x: data.map(d => d.x), y: data.map(d => d.y), z: data.map(d => d.altitude),
+            mode: 'lines', type: 'scatter3d', name: ds.name,
+            hovertemplate: `${ds.name}<br>X: %{x:.1f} m<br>Y: %{y:.1f} m<br>Alt: %{z:.1f} m<extra></extra>`
+        };
+        if (single) {
+            traj.line = {
+                color: data.map(d => d.speed),
+                colorscale: [[0,'#3b5998'],[0.25,'#5ce0d2'],[0.5,'#a8e06c'],[0.75,'#f0c040'],[1,'#e94560']],
+                width: 4,
+                colorbar: {
+                    title: { text: 'Speed (m/s)', font: { size: 11, color: '#7a8fa6' } },
+                    tickfont: { color: '#7a8fa6', size: 10 },
+                    bgcolor: 'rgba(15,25,35,0.7)', bordercolor: '#253a52',
+                    len: 0.6, thickness: 12, x: 1.02
+                }
+            };
+        } else {
+            traj.line = { color: ds.color, width: 3 };
+        }
+        traces.push(traj);
+
+        const minAlt = Math.min(...data.map(d => d.altitude));
+        traces.push({
+            x: data.map(d => d.x), y: data.map(d => d.y), z: data.map(() => Math.max(minAlt, 0)),
+            mode: 'lines', type: 'scatter3d', opacity: 0.25,
+            line: { color: ds.color, width: 2 },
+            name: ds.name + ' Ground', showlegend: false, hoverinfo: 'skip'
+        });
+
+        const first = data[0];
+        traces.push({
+            x: [first.x], y: [first.y], z: [first.altitude],
+            mode: 'markers', type: 'scatter3d',
+            marker: { size: 5, color: ds.color, symbol: 'diamond' },
+            name: ds.name + ' Launch', showlegend: false,
+            hovertemplate: `${ds.name} Launch<br>Alt: %{z:.1f} m<extra></extra>`
+        });
+
+        const last = data[data.length - 1];
+        traces.push({
+            x: [last.x], y: [last.y], z: [last.altitude],
+            mode: 'markers', type: 'scatter3d',
+            marker: { size: 5, color: ds.color, symbol: 'x' },
+            name: ds.name + ' Impact', showlegend: false,
+            hovertemplate: `${ds.name} Impact<br>X: %{x:.1f} m<br>Alt: %{z:.1f} m<extra></extra>`
+        });
+    }
+    Plotly.newPlot('plot-container', traces, get3DLayout(), plotConfig);
+}
+
+// ---- 3D Animation ----
+
+const animState = {
+    playing: false,
+    speed: 1,
+    currentTime: 0,
+    maxTime: 0,
+    rafId: null,
+    lastTimestamp: null,
+    datasets: null,
+    traceCount: 0   // number of static traces (before dynamic markers)
+};
+
+function updatePlotAnimation(datasets) {
+    stopAnimation();
+    animState.datasets = datasets;
+    animState.currentTime = 0;
+    animState.maxTime = 0;
+    for (const ds of datasets) {
+        const lastT = ds.data[ds.data.length - 1].time;
+        if (lastT > animState.maxTime) animState.maxTime = lastT;
+    }
+
+    const slider = document.getElementById('anim-slider');
+    slider.value = 0;
+    slider.max = 1000;
+    updateAnimTimeDisplay();
+
+    // Build static traces: full trajectory (faded) + ground track per projectile
+    const traces = [];
+    for (const ds of datasets) {
+        const data = ds.data;
+        // Full trajectory line (faded)
+        traces.push({
+            x: data.map(d => d.x), y: data.map(d => d.y), z: data.map(d => d.altitude),
+            mode: 'lines', type: 'scatter3d', name: ds.name + ' Path',
+            line: { color: ds.color, width: 2 }, opacity: 0.25,
+            hoverinfo: 'skip', showlegend: false
+        });
+        // Ground track (faded)
+        const minAlt = Math.min(...data.map(d => d.altitude));
+        traces.push({
+            x: data.map(d => d.x), y: data.map(d => d.y), z: data.map(() => Math.max(minAlt, 0)),
+            mode: 'lines', type: 'scatter3d', opacity: 0.12,
+            line: { color: ds.color, width: 1 },
+            name: ds.name + ' Ground', showlegend: false, hoverinfo: 'skip'
+        });
+    }
+    animState.traceCount = traces.length;
+
+    // Add dynamic traces per projectile: trail, marker, orientation arrow
+    for (const ds of datasets) {
+        const first = ds.data[0];
+        // Trail (bright, grows over time)
+        traces.push({
+            x: [first.x], y: [first.y], z: [first.altitude],
+            mode: 'lines', type: 'scatter3d', name: ds.name,
+            line: { color: ds.color, width: 4 },
+            hoverinfo: 'skip'
+        });
+        // Current position marker
+        traces.push({
+            x: [first.x], y: [first.y], z: [first.altitude],
+            mode: 'markers', type: 'scatter3d',
+            marker: { size: 6, color: ds.color, symbol: 'diamond' },
+            name: ds.name + ' Pos', showlegend: false,
+            hovertemplate: `${ds.name}<br>T: ${first.time.toFixed(2)}s<br>X: %{x:.1f}<br>Y: %{y:.1f}<br>Alt: %{z:.1f}<extra></extra>`
+        });
+        // Orientation arrow (line from pos in velocity direction)
+        traces.push({
+            x: [first.x, first.x], y: [first.y, first.y], z: [first.altitude, first.altitude],
+            mode: 'lines', type: 'scatter3d',
+            line: { color: '#ffffff', width: 3 },
+            name: ds.name + ' Dir', showlegend: false, hoverinfo: 'skip'
+        });
+    }
+
+    // Precompute arrow lengths per dataset
+    animState.arrowLens = datasets.map(ds => {
+        const data = ds.data;
+        const dx = Math.abs(data[data.length - 1].x - data[0].x);
+        const dy = Math.abs(data[data.length - 1].y - data[0].y);
+        let maxAlt = 0, minAlt = Infinity;
+        for (const d of data) {
+            if (d.altitude > maxAlt) maxAlt = d.altitude;
+            if (d.altitude < minAlt) minAlt = d.altitude;
+        }
+        return Math.max(dx, dy, maxAlt - minAlt, 100) * 0.04;
+    });
+
+    Plotly.newPlot('plot-container', traces, get3DLayout(), plotConfig);
+    animateToTime(0);
+}
+
+function getDataAtTime(data, t) {
+    if (t <= data[0].time) return data[0];
+    if (t >= data[data.length - 1].time) return data[data.length - 1];
+    // Binary search for bracket
+    let lo = 0, hi = data.length - 1;
+    while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1;
+        if (data[mid].time <= t) lo = mid; else hi = mid;
+    }
+    // Linear interpolation
+    const a = data[lo], b = data[hi];
+    const frac = (t - a.time) / (b.time - a.time);
+    return {
+        x: a.x + frac * (b.x - a.x),
+        y: a.y + frac * (b.y - a.y),
+        altitude: a.altitude + frac * (b.altitude - a.altitude),
+        vx: a.vx + frac * (b.vx - a.vx),
+        vy: a.vy + frac * (b.vy - a.vy),
+        vz: a.vz + frac * (b.vz - a.vz),
+        speed: a.speed + frac * (b.speed - a.speed),
+        pitch: a.pitch + frac * (b.pitch - a.pitch),
+        yaw: a.yaw + frac * (b.yaw - a.yaw),
+        time: t
+    };
+}
+
+function animateToTime(t) {
+    if (!animState.datasets) return;
+    const datasets = animState.datasets;
+    const update = { x: [], y: [], z: [] };
+    const traceIndices = [];
+
+    for (let i = 0; i < datasets.length; i++) {
+        const ds = datasets[i];
+        const baseIdx = animState.traceCount + i * 3;
+        const pt = getDataAtTime(ds.data, Math.min(t, ds.data[ds.data.length - 1].time));
+
+        // Compute arrow endpoint
+        const speed = Math.sqrt(pt.vx * pt.vx + pt.vy * pt.vy + pt.vz * pt.vz);
+        const arrowLen = animState.arrowLens[i];
+        let ax2 = pt.x, ay2 = pt.y, az2 = pt.altitude;
+        if (speed > 1e-6) {
+            ax2 = pt.x + (pt.vx / speed) * arrowLen;
+            ay2 = pt.y + (pt.vy / speed) * arrowLen;
+            az2 = pt.altitude + (pt.vz / speed) * arrowLen;
+        }
+
+        // Trail: all data points up to current time (binary search for cutoff)
+        let cutoff = 0;
+        { let lo2 = 0, hi2 = ds.data.length - 1;
+          while (lo2 <= hi2) { const m = (lo2 + hi2) >> 1; if (ds.data[m].time <= t) { cutoff = m; lo2 = m + 1; } else { hi2 = m - 1; } }
+        }
+        const trailX = [], trailY = [], trailZ = [];
+        for (let j = 0; j <= cutoff; j++) {
+            trailX.push(ds.data[j].x); trailY.push(ds.data[j].y); trailZ.push(ds.data[j].altitude);
+        }
+        // Add interpolated current point
+        if (t > ds.data[cutoff].time && t < ds.data[ds.data.length - 1].time) {
+            trailX.push(pt.x); trailY.push(pt.y); trailZ.push(pt.altitude);
+        }
+
+        // Trail trace
+        update.x.push(trailX);
+        update.y.push(trailY);
+        update.z.push(trailZ);
+        traceIndices.push(baseIdx);
+
+        // Marker trace
+        update.x.push([pt.x]);
+        update.y.push([pt.y]);
+        update.z.push([pt.altitude]);
+        traceIndices.push(baseIdx + 1);
+
+        // Arrow trace
+        update.x.push([pt.x, ax2]);
+        update.y.push([pt.y, ay2]);
+        update.z.push([pt.altitude, az2]);
+        traceIndices.push(baseIdx + 2);
+    }
+
+    Plotly.restyle('plot-container', update, traceIndices);
+}
+
+function animationLoop(timestamp) {
+    if (!animState.playing) return;
+    if (animState.lastTimestamp === null) {
+        animState.lastTimestamp = timestamp;
+        animState.rafId = requestAnimationFrame(animationLoop);
+        return;
+    }
+    const dtReal = (timestamp - animState.lastTimestamp) / 1000; // real seconds elapsed
+    animState.lastTimestamp = timestamp;
+    animState.currentTime += dtReal * animState.speed;
+
+    if (animState.currentTime >= animState.maxTime) {
+        animState.currentTime = animState.maxTime;
+        animState.playing = false;
+        document.getElementById('anim-play').innerHTML = '&#9654;';
+    }
+
+    const slider = document.getElementById('anim-slider');
+    slider.value = (animState.currentTime / animState.maxTime) * 1000;
+    updateAnimTimeDisplay();
+    animateToTime(animState.currentTime);
+
+    if (animState.playing) {
+        animState.rafId = requestAnimationFrame(animationLoop);
+    }
+}
+
+function toggleAnimation() {
+    if (!animState.datasets) return;
+    if (animState.playing) {
+        stopAnimation();
+    } else {
+        if (animState.currentTime >= animState.maxTime) {
+            animState.currentTime = 0;
+        }
+        animState.playing = true;
+        animState.lastTimestamp = null;
+        document.getElementById('anim-play').innerHTML = '&#9646;&#9646;';
+        animState.rafId = requestAnimationFrame(animationLoop);
+    }
+}
+
+function stopAnimation() {
+    animState.playing = false;
+    animState.lastTimestamp = null;
+    if (animState.rafId) {
+        cancelAnimationFrame(animState.rafId);
+        animState.rafId = null;
+    }
+    document.getElementById('anim-play').innerHTML = '&#9654;';
+}
+
+function resetAnimation() {
+    stopAnimation();
+    animState.currentTime = 0;
+    document.getElementById('anim-slider').value = 0;
+    updateAnimTimeDisplay();
+    animateToTime(0);
+}
+
+function updateAnimTimeDisplay() {
+    document.getElementById('anim-time').textContent =
+        animState.currentTime.toFixed(2) + ' / ' + animState.maxTime.toFixed(2) + ' s';
+}
+
+// Wire animation controls
+document.getElementById('anim-play').addEventListener('click', toggleAnimation);
+document.getElementById('anim-reset').addEventListener('click', resetAnimation);
+document.getElementById('anim-slider').addEventListener('input', function() {
+    const frac = this.value / 1000;
+    animState.currentTime = frac * animState.maxTime;
+    updateAnimTimeDisplay();
+    animateToTime(animState.currentTime);
+});
+document.getElementById('anim-speed').addEventListener('change', function() {
+    animState.speed = parseFloat(this.value);
+});
+
+// ---- Velocity vs Time ----
+
+function updatePlotVelocity(datasets) {
+    const traces = [];
+    const multi = datasets.length > 1;
+    for (const ds of datasets) {
+        const t = ds.data.map(d => d.time);
+        const pre = multi ? ds.name + ' ' : '';
+        traces.push(
+            { x: t, y: ds.data.map(d => d.vx), mode: 'lines', name: pre + 'Vx', line: { color: ds.color, width: 2 } },
+            { x: t, y: ds.data.map(d => d.vy), mode: 'lines', name: pre + 'Vy', line: { color: ds.color, width: 2, dash: 'dash' } },
+            { x: t, y: ds.data.map(d => d.vz), mode: 'lines', name: pre + 'Vz', line: { color: ds.color, width: 2, dash: 'dot' } }
+        );
+    }
+    Plotly.newPlot('plot-container', traces, get2DLayout('Velocity (m/s)'), plotConfig);
+}
+
+// ---- Acceleration vs Time ----
+
+function computeAccelerations(data) {
+    const ax = [], ay = [], az = [];
+    for (let i = 0; i < data.length; i++) {
+        if (i < data.length - 1) {
+            const dt = data[i + 1].time - data[i].time;
+            if (dt > 0) {
+                ax.push((data[i + 1].vx - data[i].vx) / dt);
+                ay.push((data[i + 1].vy - data[i].vy) / dt);
+                az.push((data[i + 1].vz - data[i].vz) / dt);
+            } else { ax.push(0); ay.push(0); az.push(0); }
+        } else {
+            ax.push(ax.length > 0 ? ax[ax.length - 1] : 0);
+            ay.push(ay.length > 0 ? ay[ay.length - 1] : 0);
+            az.push(az.length > 0 ? az[az.length - 1] : 0);
+        }
+    }
+    return { ax, ay, az };
+}
+
+function updatePlotAcceleration(datasets) {
+    const traces = [];
+    const multi = datasets.length > 1;
+    for (const ds of datasets) {
+        const t = ds.data.map(d => d.time);
+        const { ax, ay, az } = computeAccelerations(ds.data);
+        const pre = multi ? ds.name + ' ' : '';
+        traces.push(
+            { x: t, y: ax, mode: 'lines', name: pre + 'Ax', line: { color: ds.color, width: 2 } },
+            { x: t, y: ay, mode: 'lines', name: pre + 'Ay', line: { color: ds.color, width: 2, dash: 'dash' } },
+            { x: t, y: az, mode: 'lines', name: pre + 'Az', line: { color: ds.color, width: 2, dash: 'dot' } }
+        );
+    }
+    Plotly.newPlot('plot-container', traces, get2DLayout('Acceleration (m/s²)'), plotConfig);
+}
+
+// ---- Overview ----
+
+function updatePlotOverview(datasets) {
+    const traces = [];
+    const multi = datasets.length > 1;
+    for (const ds of datasets) {
+        const t = ds.data.map(d => d.time);
+        const { ax, ay, az } = computeAccelerations(ds.data);
+        const totalAccel = ax.map((a, i) => Math.sqrt(a * a + ay[i] * ay[i] + az[i] * az[i]));
+        const pre = multi ? ds.name + ' ' : '';
+        traces.push(
+            { x: t, y: ds.data.map(d => d.speed), mode: 'lines', name: pre + 'Speed', line: { color: ds.color, width: 2 }, yaxis: 'y' },
+            { x: t, y: totalAccel, mode: 'lines', name: pre + 'Accel', line: { color: ds.color, width: 2, dash: 'dash' }, yaxis: 'y' },
+            { x: t, y: ds.data.map(d => d.altitude), mode: 'lines', name: pre + 'Alt', line: { color: ds.color, width: 2, dash: 'dot' }, yaxis: 'y2' }
+        );
+    }
+    const layout = get2DLayout('Speed / Acceleration', {
+        yaxis2: { title: 'Altitude (m)', color: '#f0c040', gridcolor: 'rgba(30,51,72,0.4)', zerolinecolor: '#2a4060', overlaying: 'y', side: 'right' }
+    });
+    layout.margin.r = 60;
+    Plotly.newPlot('plot-container', traces, layout, plotConfig);
+}
+
+// ---- Orientation vs Time ----
+
+function updatePlotOrientation(datasets) {
+    const traces = [];
+    const multi = datasets.length > 1;
+    for (const ds of datasets) {
+        const t = ds.data.map(d => d.time);
+        const pre = multi ? ds.name + ' ' : '';
+        traces.push(
+            { x: t, y: ds.data.map(d => d.pitch), mode: 'lines', name: pre + 'Pitch', line: { color: ds.color, width: 2 } },
+            { x: t, y: ds.data.map(d => d.yaw), mode: 'lines', name: pre + 'Yaw', line: { color: ds.color, width: 2, dash: 'dash' } },
+            { x: t, y: ds.data.map(d => d.roll), mode: 'lines', name: pre + 'Roll', line: { color: ds.color, width: 2, dash: 'dot' } }
+        );
+    }
+    Plotly.newPlot('plot-container', traces, get2DLayout('Angle (deg)'), plotConfig);
+}
+
+// ---- IMU (Body-Frame) Acceleration vs Time ----
+
+function updatePlotIMU(datasets) {
+    const traces = [];
+    const multi = datasets.length > 1;
+    for (const ds of datasets) {
+        const t = ds.data.map(d => d.time);
+        const pre = multi ? ds.name + ' ' : '';
+        traces.push(
+            { x: t, y: ds.data.map(d => d.imu_forward), mode: 'lines', name: pre + 'Forward', line: { color: ds.color, width: 2 } },
+            { x: t, y: ds.data.map(d => d.imu_right), mode: 'lines', name: pre + 'Right', line: { color: ds.color, width: 2, dash: 'dash' } },
+            { x: t, y: ds.data.map(d => d.imu_down), mode: 'lines', name: pre + 'Down', line: { color: ds.color, width: 2, dash: 'dot' } }
+        );
+    }
+    Plotly.newPlot('plot-container', traces, get2DLayout('Body-Frame Acceleration (m/s²)'), plotConfig);
+}
+
+// ---- Sensors vs Time ----
+
+function updatePlotSensors(datasets) {
+    const traces = [];
+    const multi = datasets.length > 1;
+    const SENSOR_LINE_COLORS = ['#5ce0d2','#e94560','#f0c040','#7b68ee','#ff8c42','#a8e06c','#ff6b9d','#48bfe3'];
+    const DASH_PATTERNS = ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot'];
+
+    for (const ds of datasets) {
+        if (ds.data.length === 0) continue;
+
+        // Discover sensor columns from data point keys
+        const sensorKeys = Object.keys(ds.data[0]).filter(k => k.startsWith('sensor_'));
+        if (sensorKeys.length === 0) continue;
+
+        const t = ds.data.map(d => d.time);
+        const pre = multi ? ds.name + ' ' : '';
+
+        sensorKeys.forEach((key, si) => {
+            const displayName = key.replace('sensor_', '').replace(/_/g, ' ');
+            const color = multi ? ds.color : SENSOR_LINE_COLORS[si % SENSOR_LINE_COLORS.length];
+            const dash = multi ? DASH_PATTERNS[si % DASH_PATTERNS.length] : 'solid';
+
+            traces.push({
+                x: t,
+                y: ds.data.map(d => d[key]),
+                mode: 'lines',
+                name: pre + displayName,
+                line: { color, width: 2, dash }
+            });
+        });
+    }
+
+    if (traces.length === 0) {
+        Plotly.newPlot('plot-container', [{
+            x: [], y: [], mode: 'lines', type: 'scatter',
+            line: { color: '#5ce0d2', width: 2 }, name: 'No sensors configured'
+        }], get2DLayout('Sensor Reading'), plotConfig);
+        return;
+    }
+
+    Plotly.newPlot('plot-container', traces, get2DLayout('Sensor Reading'), plotConfig);
+}
+
+// ============================================================
+// SECTION 10: STATISTICS
+// ============================================================
+function updateStats(data) {
+    let maxAlt = 0, maxSpeed = 0, maxMach = 0, maxQ = 0;
+    for (const d of data) {
+        if (d.altitude > maxAlt) maxAlt = d.altitude;
+        if (d.speed > maxSpeed) maxSpeed = d.speed;
+        if (d.mach > maxMach) maxMach = d.mach;
+        if (d.dynamic_pressure > maxQ) maxQ = d.dynamic_pressure;
+    }
+    const last = data[data.length - 1];
+    const range = Math.sqrt(last.x * last.x + last.y * last.y);
+    const fmt = (v, d) => v.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+    setStatVal('stat-maxalt', fmt(maxAlt, 1), 'm');
+    setStatVal('stat-range', fmt(range, 1), 'm');
+    setStatVal('stat-time', fmt(last.time, 2), 's');
+    setStatVal('stat-impact', fmt(last.speed, 1), 'm/s');
+    setStatVal('stat-maxspeed', fmt(maxSpeed, 1), 'm/s');
+    setStatVal('stat-maxmach', fmt(maxMach, 3), '');
+    setStatVal('stat-maxq', fmt(maxQ, 0), 'Pa');
+    document.getElementById('stat-points').textContent = data.length.toLocaleString();
+}
+
+function setStatVal(id, value, unit) {
+    const el = document.getElementById(id);
+    el.innerHTML = value + (unit ? `<span class="stat-unit">${unit}</span>` : '');
+}
+
+function clearStats() {
+    ['stat-maxalt','stat-range','stat-time','stat-impact','stat-maxspeed','stat-maxmach','stat-maxq'].forEach(id => {
+        setStatVal(id, '—', '');
+    });
+    document.getElementById('stat-points').textContent = '—';
+}
+
+function updateStatsForActiveProjectile() {
+    const proj = projectiles.find(p => p.id === activeProjectileId);
+    if (proj && proj.data && proj.data.length > 0) {
+        updateStats(proj.data);
+    } else {
+        clearStats();
+    }
+    updateStatsIndicator();
+}
+
+function updateStatsIndicator() {
+    const proj = projectiles.find(p => p.id === activeProjectileId);
+    const el = document.getElementById('stats-projectile-indicator');
+    if (proj) {
+        const idx = projectiles.indexOf(proj) + 1;
+        el.innerHTML = `<span class="projectile-color-dot" style="background: ${proj.color};"></span><span>Projectile ${idx}</span>`;
+    }
+}
+
+// ============================================================
+// SECTION 11: CSV EXPORT
+// ============================================================
+const CSV_COLUMN_GROUPS = {
+    time:        ['time'],
+    position:    ['x', 'y', 'z'],
+    velocity:    ['vx', 'vy', 'vz', 'speed'],
+    orientation: ['pitch', 'yaw', 'roll'],
+    atmosphere:  ['altitude', 'air_density', 'mach'],
+    forces:      ['drag_coefficient', 'acceleration', 'dynamic_pressure'],
+    imu:         ['imu_forward', 'imu_right', 'imu_down'],
+    guidance:    ['guidance_cd', 'guidance_area', 'guidance_predicted_apogee']
+};
+
+let pendingCSVProjectileId = null;
+
+function openCSVModal(projectileId) {
+    const proj = projectiles.find(p => p.id === projectileId);
+    if (!proj || !proj.data || proj.data.length === 0) {
+        alert('No simulation data for this projectile. Run the simulation first.');
+        return;
+    }
+    pendingCSVProjectileId = projectileId;
+
+    // Show/hide guidance checkbox based on whether guidance data exists
+    const hasGuidance = proj.data[0].guidance_cd !== undefined;
+    document.getElementById('csv-modal-guidance-group').style.display = hasGuidance ? '' : 'none';
+
+    // Show/hide sensors checkbox based on whether sensor data exists
+    const sensorKeys = Object.keys(proj.data[0]).filter(k => k.startsWith('sensor_'));
+    const sensorsGroup = document.getElementById('csv-modal-sensors-group');
+    if (sensorKeys.length > 0) {
+        sensorsGroup.style.display = '';
+        const names = sensorKeys.map(k => k.replace('sensor_', '').replace(/_/g, ' '));
+        document.getElementById('csv-sensors-list-label').textContent = '(' + names.join(', ') + ')';
+    } else {
+        sensorsGroup.style.display = 'none';
+    }
+
+    document.getElementById('csv-modal-overlay').classList.add('open');
+}
+
+function closeCSVModal() {
+    document.getElementById('csv-modal-overlay').classList.remove('open');
+    pendingCSVProjectileId = null;
+}
+
+function exportCSVWithSelection() {
+    if (pendingCSVProjectileId === null) return;
+    const proj = projectiles.find(p => p.id === pendingCSVProjectileId);
+    if (!proj || !proj.data || proj.data.length === 0) return;
+
+    const headers = [];
+    for (const [group, cols] of Object.entries(CSV_COLUMN_GROUPS)) {
+        const wrapper = document.getElementById('csv-modal-' + group + '-group');
+        // Skip hidden groups (guidance, sensors have separate wrappers)
+        if (wrapper && wrapper.style.display === 'none') continue;
+        if (document.getElementById('csv-col-' + group).checked) {
+            headers.push(...cols);
+        }
+    }
+    // Include sensor columns if checked and visible
+    const sensorsCheckbox = document.getElementById('csv-col-sensors');
+    const sensorsGroup = document.getElementById('csv-modal-sensors-group');
+    if (sensorsGroup.style.display !== 'none' && sensorsCheckbox.checked) {
+        const sensorKeys = Object.keys(proj.data[0]).filter(k => k.startsWith('sensor_'));
+        headers.push(...sensorKeys);
+    }
+    if (headers.length === 0) {
+        alert('Please select at least one data category.');
+        return;
+    }
+
+    const idx = projectiles.indexOf(proj) + 1;
+    let csv = headers.join(',') + '\n';
+    for (const row of proj.data) {
+        csv += headers.map(h => {
+            const v = row[h];
+            return typeof v === 'number' ? v.toPrecision(10) : v;
+        }).join(',') + '\n';
+    }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `projectile_${idx}_trajectory.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    closeCSVModal();
+}
+
+function updateCSVDropdown() {
+    const menu = document.getElementById('csv-dropdown-menu');
+    menu.innerHTML = '';
+    projectiles.forEach((proj, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'csv-dropdown-item';
+        btn.innerHTML = `<span class="projectile-color-dot" style="background: ${proj.color};"></span> Projectile ${i + 1}`;
+        btn.addEventListener('click', () => {
+            openCSVModal(proj.id);
+            menu.classList.remove('open');
+        });
+        menu.appendChild(btn);
+    });
+}
+
+// ============================================================
+// SECTION 12: UI HELPERS & EVENT WIRING
+// ============================================================
+function setStatus(type, text) {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    dot.className = 'status-dot status-' + type;
+    txt.textContent = text;
+}
+
+// ---- Drag stages management ----
+let dragStageCounter = 0;
+const dragStagesList = document.getElementById('drag-stages-list');
+
+function addDragStage() {
+    const id = dragStageCounter++;
+    const div = document.createElement('div');
+    div.className = 'drag-stage';
+    div.dataset.stageId = id;
+    div.innerHTML = `
+        <div class="drag-stage-header">
+            <span>Stage ${id + 1}</span>
+            <button class="drag-stage-remove" title="Remove">&times;</button>
+        </div>
+        <div class="drag-stage-body">
+            <div class="field">
+                <label>New Cd <span class="unit">—</span></label>
+                <input type="number" class="stage-cd" value="1.5" min="0.0" max="5.0" step="0.01">
+            </div>
+            <div class="field">
+                <label>New Frontal Area <span class="unit">m&sup2;</span></label>
+                <input type="number" class="stage-area" value="5.0" min="0.0001" max="1000" step="0.1">
+            </div>
+            <div class="field">
+                <label>Trigger</label>
+                <select class="stage-trigger">
+                    <option value="apogee">At Apogee</option>
+                    <option value="time">Time After Launch</option>
+                    <option value="altitude">Altitude (Descent)</option>
+                </select>
+            </div>
+            <div class="field trigger-param hidden" data-trigger="apogee">
+                <label>Delay After Apogee <span class="unit">s</span></label>
+                <input type="number" class="stage-apogee-delay" value="0" min="0" max="100000" step="0.5">
+            </div>
+            <div class="field trigger-param hidden" data-trigger="time">
+                <label>Trigger Time <span class="unit">s</span></label>
+                <input type="number" class="stage-time" value="30" min="0" max="100000" step="1">
+            </div>
+            <div class="field trigger-param hidden" data-trigger="altitude">
+                <label>Trigger Altitude <span class="unit">m ASL</span></label>
+                <input type="number" class="stage-alt" value="1000" min="0" max="100000" step="100">
+            </div>
+        </div>
+    `;
+    dragStagesList.appendChild(div);
+    const sel = div.querySelector('.stage-trigger');
+    const updateParams = () => {
+        div.querySelectorAll('.trigger-param').forEach(el => {
+            el.classList.toggle('hidden', el.dataset.trigger !== sel.value);
+        });
+    };
+    sel.addEventListener('change', updateParams);
+    updateParams();
+    div.querySelector('.drag-stage-remove').addEventListener('click', () => {
+        div.remove();
+        renumberStages();
+    });
+    renumberStages();
+}
+
+function renumberStages() {
+    dragStagesList.querySelectorAll('.drag-stage').forEach((el, i) => {
+        el.querySelector('.drag-stage-header span').textContent = `Stage ${i + 1}`;
+    });
+}
+
+function readDragStages() {
+    const stages = [];
+    dragStagesList.querySelectorAll('.drag-stage').forEach(el => {
+        const body = el.querySelector('.drag-stage-body');
+        const v = sel => parseFloat(body.querySelector(sel).value) || 0;
+        stages.push({
+            cd: Math.max(v('.stage-cd'), 0),
+            area: Math.max(v('.stage-area'), 1e-6),
+            trigger: body.querySelector('.stage-trigger').value,
+            apogeeDelay: v('.stage-apogee-delay'),
+            time: v('.stage-time'),
+            alt: v('.stage-alt')
+        });
+    });
+    return stages;
+}
+
+function rebuildDragStagesUI(stages) {
+    dragStagesList.innerHTML = '';
+    dragStageCounter = 0;
+    for (const s of stages) {
+        addDragStage();
+        const lastStage = dragStagesList.lastElementChild;
+        const body = lastStage.querySelector('.drag-stage-body');
+        body.querySelector('.stage-cd').value = s.cd;
+        body.querySelector('.stage-area').value = s.area;
+        body.querySelector('.stage-trigger').value = s.trigger;
+        body.querySelector('.stage-apogee-delay').value = s.apogeeDelay;
+        body.querySelector('.stage-time').value = s.time;
+        body.querySelector('.stage-alt').value = s.alt;
+        body.querySelector('.stage-trigger').dispatchEvent(new Event('change'));
+    }
+}
+
+document.getElementById('btn-add-stage').addEventListener('click', addDragStage);
+
+// ---- Sensor management ----
+
+let sensorCardCounter = 0;
+const sensorsList = document.getElementById('sensors-list');
+
+function addSensor(defaults) {
+    const id = sensorCardCounter++;
+    const d = defaults || {};
+    const div = document.createElement('div');
+    div.className = 'sensor-card';
+    div.dataset.sensorId = id;
+
+    // Build optgroup HTML from SENSOR_TYPES
+    const categories = {};
+    for (const [key, info] of Object.entries(SENSOR_TYPES)) {
+        if (!categories[info.category]) categories[info.category] = [];
+        categories[info.category].push({ key, label: info.label });
+    }
+    let optionsHTML = '';
+    for (const [cat, opts] of Object.entries(categories)) {
+        optionsHTML += `<optgroup label="${cat}">`;
+        for (const o of opts) {
+            optionsHTML += `<option value="${o.key}">${o.label}</option>`;
+        }
+        optionsHTML += '</optgroup>';
+    }
+
+    div.innerHTML = `
+        <div class="drag-stage-header">
+            <span>Sensor ${id + 1}</span>
+            <button class="drag-stage-remove" title="Remove">&times;</button>
+        </div>
+        <div class="drag-stage-body">
+            <div class="field">
+                <label>Name</label>
+                <input type="text" class="sensor-name" value="${d.name || 'Sensor ' + (id + 1)}">
+            </div>
+            <div class="field">
+                <label>Data Type</label>
+                <select class="sensor-data-type">${optionsHTML}</select>
+            </div>
+            <div class="field">
+                <label>Noise Type</label>
+                <select class="sensor-noise-type">
+                    <option value="none">None</option>
+                    <option value="gaussian">Gaussian (White Noise)</option>
+                    <option value="random_walk">Random Walk (Bias Drift)</option>
+                </select>
+            </div>
+            <div class="field sensor-noise-param hidden">
+                <label>Noise Std Dev (&sigma;)</label>
+                <input type="number" class="sensor-noise-stddev" value="${d.noiseStdDev || 0}" min="0" step="0.01">
+            </div>
+            <div class="field">
+                <label>Bias (constant offset)</label>
+                <input type="number" class="sensor-bias" value="${d.bias || 0}" step="0.01">
+            </div>
+            <div class="field">
+                <label>Update Rate <span class="unit">Hz</span></label>
+                <input type="number" class="sensor-update-rate" value="${d.updateRate !== undefined ? d.updateRate : 100}" min="0" max="100000" step="1">
+            </div>
+        </div>
+    `;
+
+    sensorsList.appendChild(div);
+
+    // Wire noise type visibility toggle
+    const noiseSelect = div.querySelector('.sensor-noise-type');
+    const noiseParam = div.querySelector('.sensor-noise-param');
+    const updateNoiseVisibility = () => {
+        noiseParam.classList.toggle('hidden', noiseSelect.value === 'none');
+    };
+    noiseSelect.addEventListener('change', updateNoiseVisibility);
+
+    // Apply defaults if provided
+    if (d.dataType) div.querySelector('.sensor-data-type').value = d.dataType;
+    if (d.noiseType) {
+        noiseSelect.value = d.noiseType;
+        updateNoiseVisibility();
+    }
+
+    // Wire remove button
+    div.querySelector('.drag-stage-remove').addEventListener('click', () => {
+        div.remove();
+        renumberSensors();
+    });
+
+    renumberSensors();
+}
+
+function renumberSensors() {
+    sensorsList.querySelectorAll('.sensor-card').forEach((el, i) => {
+        el.querySelector('.drag-stage-header span').textContent = `Sensor ${i + 1}`;
+    });
+}
+
+function readSensors() {
+    const sensors = [];
+    sensorsList.querySelectorAll('.sensor-card').forEach(el => {
+        const body = el.querySelector('.drag-stage-body');
+        sensors.push({
+            name:        body.querySelector('.sensor-name').value.trim() || 'Sensor',
+            dataType:    body.querySelector('.sensor-data-type').value,
+            noiseType:   body.querySelector('.sensor-noise-type').value,
+            noiseStdDev: Math.max(parseFloat(body.querySelector('.sensor-noise-stddev').value) || 0, 0),
+            bias:        parseFloat(body.querySelector('.sensor-bias').value) || 0,
+            updateRate:  Math.max(parseFloat(body.querySelector('.sensor-update-rate').value) || 0, 0)
+        });
+    });
+    return sensors;
+}
+
+function rebuildSensorsUI(sensors) {
+    sensorsList.innerHTML = '';
+    sensorCardCounter = 0;
+    if (!sensors) return;
+    for (const s of sensors) {
+        addSensor(s);
+    }
+}
+
+document.getElementById('btn-add-sensor').addEventListener('click', () => addSensor());
+
+// ---- Projectile management ----
+
+function addProjectile() {
+    const id = nextProjectileId++;
+    const idx = projectiles.length;
+    projectiles.push({
+        id,
+        name: `Projectile ${idx + 1}`,
+        color: PROJECTILE_COLORS[idx % PROJECTILE_COLORS.length],
+        params: getDefaultParams(),
+        data: null
+    });
+    switchToProjectile(id);
+}
+
+function removeProjectile(id) {
+    if (projectiles.length <= 1) return;
+    const idx = projectiles.findIndex(p => p.id === id);
+    projectiles.splice(idx, 1);
+    if (activeProjectileId === id) {
+        switchToProjectile(projectiles[0].id);
+    }
+    renderProjectileTabs();
+    renderCurrentView();
+    updateStatsForActiveProjectile();
+}
+
+function switchToProjectile(id) {
+    saveActiveParams();
+    activeProjectileId = id;
+    loadParamsToSidebar(id);
+    renderProjectileTabs();
+    updateStatsForActiveProjectile();
+}
+
+function renderProjectileTabs() {
+    const container = document.getElementById('projectile-tabs');
+    container.innerHTML = '';
+    projectiles.forEach((proj, i) => {
+        const tab = document.createElement('div');
+        tab.className = 'projectile-tab' + (proj.id === activeProjectileId ? ' active' : '');
+        tab.dataset.projectileId = proj.id;
+        const removeBtn = projectiles.length > 1
+            ? '<button class="projectile-tab-remove" title="Remove">&times;</button>'
+            : '';
+        tab.innerHTML = `
+            <span class="projectile-color-dot" style="background: ${proj.color};"></span>
+            <span class="projectile-tab-label">P${i + 1}</span>
+            ${removeBtn}
+        `;
+        tab.addEventListener('click', (e) => {
+            if (e.target.classList.contains('projectile-tab-remove')) {
+                removeProjectile(proj.id);
+            } else {
+                switchToProjectile(proj.id);
+            }
+        });
+        container.appendChild(tab);
+    });
+    updateCSVDropdown();
+    updateStatsIndicator();
+}
+
+document.getElementById('btn-add-projectile').addEventListener('click', addProjectile);
+
+// ---- Primary tab switching ----
+
+function switchPrimaryTab(panel) {
+    document.querySelectorAll('.primary-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.primary-tab[data-panel="${panel}"]`).classList.add('active');
+    document.getElementById('setup-panel').classList.toggle('active', panel === 'setup');
+    document.getElementById('results-panel').classList.toggle('active', panel === 'results');
+    if (panel === 'results') {
+        renderCurrentView();
+    }
+}
+
+document.querySelectorAll('.primary-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchPrimaryTab(tab.dataset.panel));
+});
+
+// ---- Custom View Builder ----
+
+const CUSTOM_VIEW_FIELDS = {
+    'Position':              [['x','X'], ['y','Y'], ['z','Z'], ['altitude','Altitude']],
+    'Velocity':              [['vx','Vx'], ['vy','Vy'], ['vz','Vz'], ['speed','Speed']],
+    'Orientation':           [['pitch','Pitch'], ['yaw','Yaw'], ['roll','Roll']],
+    'Acceleration (World)':  [['_accel_x','Accel X'], ['_accel_y','Accel Y'], ['_accel_z','Accel Z']],
+    'IMU (Body)':            [['imu_forward','Forward'], ['imu_right','Right'], ['imu_down','Down']],
+    'Atmosphere':            [['air_density','Density'], ['mach','Mach'], ['dynamic_pressure','Dyn Press']],
+    'Forces':                [['drag_coefficient','Cd'], ['acceleration','Drag Accel']],
+    'Guidance':              [['guidance_cd','Guidance Cd'], ['guidance_area','Guidance Area'], ['guidance_predicted_apogee','Predicted Apogee']],
+};
+
+function buildCustomViewFields() {
+    const container = document.getElementById('custom-view-fields');
+    container.innerHTML = '';
+    for (const [cat, fields] of Object.entries(CUSTOM_VIEW_FIELDS)) {
+        const catLabel = document.createElement('div');
+        catLabel.className = 'custom-view-category';
+        catLabel.textContent = cat;
+        container.appendChild(catLabel);
+        for (const [key, label] of fields) {
+            const lbl = document.createElement('label');
+            lbl.innerHTML = `<input type="checkbox" class="custom-field-cb" data-field="${key}"> ${label}`;
+            container.appendChild(lbl);
+        }
+    }
+    // Add sensor fields dynamically if data exists
+    const withData = projectiles.filter(p => p.data && p.data.length > 0);
+    if (withData.length > 0) {
+        const sensorKeys = Object.keys(withData[0].data[0]).filter(k => k.startsWith('sensor_'));
+        if (sensorKeys.length > 0) {
+            const catLabel = document.createElement('div');
+            catLabel.className = 'custom-view-category';
+            catLabel.textContent = 'Sensors';
+            container.appendChild(catLabel);
+            for (const key of sensorKeys) {
+                const displayName = key.replace('sensor_', '').replace(/_/g, ' ');
+                const lbl = document.createElement('label');
+                lbl.innerHTML = `<input type="checkbox" class="custom-field-cb" data-field="${key}"> ${displayName}`;
+                container.appendChild(lbl);
+            }
+        }
+    }
+}
+
+// ---- Guidance Cd & Area vs Time ----
+
+function updatePlotGuidance(datasets) {
+    const traces = [];
+    const multi = datasets.length > 1;
+    // Check if guidance data exists
+    const hasData = datasets.some(ds => ds.data.length > 0 && ds.data[0].guidance_cd !== undefined);
+    if (!hasData) {
+        Plotly.newPlot('plot-container', [{
+            x: [0], y: [0], mode: 'lines', line: { color: '#555' },
+            name: 'No guidance data'
+        }], get2DLayout('Cd / Area (m²)'), plotConfig);
+        return;
+    }
+    const hasPredicted = datasets.some(ds => ds.data.length > 0 && ds.data[0].guidance_predicted_apogee !== undefined);
+    if (hasPredicted) {
+        // Plot predicted apogee on left axis, target altitude as reference
+        for (const ds of datasets) {
+            if (ds.data.length === 0 || ds.data[0].guidance_predicted_apogee === undefined) continue;
+            const t = ds.data.map(d => d.time);
+            const pre = multi ? ds.name + ' ' : '';
+            traces.push(
+                { x: t, y: ds.data.map(d => d.guidance_predicted_apogee), mode: 'lines', name: pre + 'Predicted Apogee', line: { color: multi ? ds.color : '#f0c040', width: 2 }, yaxis: 'y' },
+                { x: t, y: ds.data.map(d => d.altitude), mode: 'lines', name: pre + 'Altitude', line: { color: multi ? ds.color : '#5ce0d2', width: 2 }, yaxis: 'y' },
+                { x: t, y: ds.data.map(d => d.guidance_cd), mode: 'lines', name: pre + 'Cd', line: { color: multi ? ds.color : '#e94560', width: 1.5 }, yaxis: 'y2' }
+            );
+        }
+        // Target altitude reference line
+        const proj = projectiles.find(p => p.id === activeProjectileId);
+        const targetAlt = proj ? (proj.params.targetAltitude || 3048) : 3048;
+        const tAll = datasets.flatMap(ds => ds.data.map(d => d.time));
+        const tMin = Math.min(...tAll), tMax = Math.max(...tAll);
+        traces.push({
+            x: [tMin, tMax], y: [targetAlt, targetAlt], mode: 'lines',
+            name: 'Target (' + targetAlt + ' m)', line: { color: '#ff6b9d', width: 2, dash: 'dashdot' }, yaxis: 'y'
+        });
+        const layout = get2DLayout('Altitude (m)', {
+            yaxis2: { title: 'Cd', color: '#e94560', gridcolor: 'rgba(30,51,72,0.4)', zerolinecolor: '#2a4060', overlaying: 'y', side: 'right' }
+        });
+        layout.margin.r = 60;
+        Plotly.newPlot('plot-container', traces, layout, plotConfig);
+    } else {
+        for (const ds of datasets) {
+            if (ds.data.length === 0 || ds.data[0].guidance_cd === undefined) continue;
+            const t = ds.data.map(d => d.time);
+            const pre = multi ? ds.name + ' ' : '';
+            traces.push(
+                { x: t, y: ds.data.map(d => d.guidance_cd), mode: 'lines', name: pre + 'Cd', line: { color: multi ? ds.color : '#5ce0d2', width: 2 }, yaxis: 'y' },
+                { x: t, y: ds.data.map(d => d.guidance_area), mode: 'lines', name: pre + 'Area', line: { color: multi ? ds.color : '#e94560', width: 2, dash: 'dash' }, yaxis: 'y2' }
+            );
+        }
+        const layout = get2DLayout('Drag Coefficient (Cd)', {
+            yaxis2: { title: 'Frontal Area (m²)', color: '#e94560', gridcolor: 'rgba(30,51,72,0.4)', zerolinecolor: '#2a4060', overlaying: 'y', side: 'right' }
+        });
+        layout.margin.r = 60;
+        Plotly.newPlot('plot-container', traces, layout, plotConfig);
+    }
+}
+
+const CUSTOM_COLORS = ['#5ce0d2','#e94560','#f0c040','#7b68ee','#ff8c42','#a8e06c','#ff6b9d','#48bfe3'];
+
+function updatePlotCustom(datasets) {
+    const checked = [...document.querySelectorAll('.custom-field-cb:checked')];
+    const selectedFields = checked.map(cb => cb.dataset.field);
+
+    if (selectedFields.length === 0) {
+        Plotly.newPlot('plot-container', [{
+            x: [], y: [], mode: 'lines', type: 'scatter',
+            line: { color: '#5ce0d2', width: 2 }, name: 'Select fields above'
+        }], get2DLayout('Value'), plotConfig);
+        return;
+    }
+
+    const traces = [];
+    const multi = datasets.length > 1;
+    const DASH_PATTERNS = ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot'];
+
+    for (const ds of datasets) {
+        if (ds.data.length === 0) continue;
+        const t = ds.data.map(d => d.time);
+        const pre = multi ? ds.name + ' ' : '';
+
+        // For world-frame accel fields, compute if not present
+        if (selectedFields.some(f => f.startsWith('_accel_')) && ds.data[0]._accel_x === undefined) {
+            for (let i = 0; i < ds.data.length; i++) {
+                if (i < ds.data.length - 1) {
+                    const dt = ds.data[i + 1].time - ds.data[i].time;
+                    if (dt > 0) {
+                        ds.data[i]._accel_x = (ds.data[i + 1].vx - ds.data[i].vx) / dt;
+                        ds.data[i]._accel_y = (ds.data[i + 1].vy - ds.data[i].vy) / dt;
+                        ds.data[i]._accel_z = (ds.data[i + 1].vz - ds.data[i].vz) / dt;
+                    } else { ds.data[i]._accel_x = 0; ds.data[i]._accel_y = 0; ds.data[i]._accel_z = 0; }
+                } else {
+                    ds.data[i]._accel_x = i > 0 ? ds.data[i-1]._accel_x : 0;
+                    ds.data[i]._accel_y = i > 0 ? ds.data[i-1]._accel_y : 0;
+                    ds.data[i]._accel_z = i > 0 ? ds.data[i-1]._accel_z : 0;
+                }
+            }
+        }
+
+        selectedFields.forEach((field, fi) => {
+            const color = multi ? ds.color : CUSTOM_COLORS[fi % CUSTOM_COLORS.length];
+            const dash = multi ? DASH_PATTERNS[fi % DASH_PATTERNS.length] : 'solid';
+            const displayName = field.startsWith('sensor_') ? field.replace('sensor_','').replace(/_/g,' ') : field.replace(/^_/,'');
+
+            traces.push({
+                x: t,
+                y: ds.data.map(d => d[field] !== undefined ? d[field] : 0),
+                mode: 'lines',
+                name: pre + displayName,
+                line: { color, width: 2, dash }
+            });
+        });
+    }
+
+    Plotly.newPlot('plot-container', traces, get2DLayout('Value'), plotConfig);
+}
+
+// ---- Data Table ----
+
+function updateDataTable(datasets) {
+    const container = document.getElementById('data-table-container');
+    const info = document.getElementById('data-table-info');
+
+    if (!datasets || datasets.length === 0) {
+        container.innerHTML = '<div style="padding:20px;color:var(--text-secondary);">No simulation data. Run a simulation first.</div>';
+        info.querySelector('#data-table-status').textContent = 'No data';
+        return;
+    }
+
+    // Use active projectile data
+    const activeProj = projectiles.find(p => p.id === activeProjectileId);
+    const ds = activeProj && activeProj.data && activeProj.data.length > 0 ? activeProj : datasets[0];
+    const data = ds.data || (ds && projectiles.find(p => p.data && p.data.length > 0) || {}).data;
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div style="padding:20px;color:var(--text-secondary);">No data available.</div>';
+        return;
+    }
+
+    // Determine columns (skip underscore-prefixed internal fields)
+    const cols = Object.keys(data[0]).filter(k => !k.startsWith('_'));
+
+    // Limit displayed rows for performance
+    const maxRows = 2000;
+    const displayData = data.length > maxRows ? data.filter((_, i) => i % Math.ceil(data.length / maxRows) === 0) : data;
+
+    const projIdx = projectiles.indexOf(activeProj) + 1;
+    info.querySelector('#data-table-status').textContent =
+        `Projectile ${projIdx} — ${data.length} points` + (data.length > maxRows ? ` (showing ${displayData.length} sampled)` : '');
+
+    let html = '<table class="data-table"><thead><tr>';
+    for (const col of cols) {
+        html += `<th>${col}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+    for (const row of displayData) {
+        html += '<tr>';
+        for (const col of cols) {
+            const v = row[col];
+            html += `<td>${typeof v === 'number' ? v.toPrecision(7) : (v !== undefined ? v : '')}</td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// ---- Button wiring ----
+
+document.getElementById('btn-run').addEventListener('click', () => {
+    setStatus('running', 'Running...');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            runSimulation();
+            // Auto-switch to results tab after running
+            switchPrimaryTab('results');
+        });
+    });
+});
+document.getElementById('btn-reset').addEventListener('click', resetSimulation);
+
+// CSV dropdown
+document.getElementById('btn-csv').addEventListener('click', (e) => {
+    if (projectiles.length === 1) {
+        openCSVModal(projectiles[0].id);
+    } else {
+        const menu = document.getElementById('csv-dropdown-menu');
+        menu.classList.toggle('open');
+        e.stopPropagation();
+    }
+});
+document.addEventListener('click', () => {
+    document.getElementById('csv-dropdown-menu').classList.remove('open');
+});
+
+// CSV modal controls
+document.getElementById('csv-modal-cancel').addEventListener('click', closeCSVModal);
+document.getElementById('csv-modal-export').addEventListener('click', exportCSVWithSelection);
+document.getElementById('csv-modal-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeCSVModal();
+});
+document.getElementById('csv-select-all').addEventListener('click', () => {
+    const checkboxes = document.querySelectorAll('[id^="csv-col-"]');
+    const allChecked = [...checkboxes].every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+    document.getElementById('csv-select-all').textContent = allChecked ? 'Select All' : 'Deselect All';
+});
+
+// Guidance program upload & controls
+document.getElementById('btn-guidance-upload').addEventListener('click', () => {
+    document.getElementById('guidance-file').click();
+});
+document.getElementById('guidance-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const status = document.getElementById('guidance-filename');
+    status.textContent = file.name;
+    status.className = 'guidance-status';
+    try {
+        const text = await file.text();
+        await loadGuidanceModule(text);
+    } catch (err) {
+        status.textContent = 'Load failed';
+        status.className = 'guidance-status error';
+        guidanceLog('ERROR: ' + err.message, true);
+    }
+    e.target.value = ''; // allow re-uploading same file
+});
+document.getElementById('guidance-enabled').addEventListener('change', (e) => {
+    guidanceEnabled = e.target.checked;
+});
+
+// Collapsible input groups
+document.querySelectorAll('.input-group-header').forEach(header => {
+    header.addEventListener('click', () => {
+        header.parentElement.classList.toggle('collapsed');
+    });
+});
+
+// ===== Dynamic View Tabs =====
+const ALL_VIEWS = [
+    { id: '3d', label: '3D Trajectory' },
+    { id: 'animation', label: '3D Animation' },
+    { id: 'velocity', label: 'Velocity' },
+    { id: 'accel', label: 'Acceleration' },
+    { id: 'overview', label: 'Overview' },
+    { id: 'orientation', label: 'Orientation' },
+    { id: 'imu', label: 'IMU' },
+    { id: 'sensors', label: 'Sensors' },
+    { id: 'custom', label: 'Custom' },
+    { id: 'guidance', label: 'Guidance' },
+    { id: 'table', label: 'Data Table' },
+];
+let visibleViews = ALL_VIEWS.map(v => v.id);
+
+function renderViewTabs() {
+    const container = document.getElementById('view-tabs-container');
+    container.innerHTML = '';
+    for (const viewId of visibleViews) {
+        const def = ALL_VIEWS.find(v => v.id === viewId);
+        if (!def) continue;
+        const btn = document.createElement('button');
+        btn.className = 'view-tab' + (currentView === viewId ? ' active' : '');
+        btn.dataset.view = viewId;
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = def.label;
+        btn.appendChild(labelSpan);
+        const closeSpan = document.createElement('span');
+        closeSpan.className = 'view-tab-close';
+        closeSpan.textContent = '\u00d7';
+        closeSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeViewTab(viewId);
+        });
+        btn.appendChild(closeSpan);
+        btn.addEventListener('click', () => switchViewTab(viewId));
+        container.appendChild(btn);
+    }
+    // Update add menu
+    renderAddViewMenu();
+}
+
+function switchViewTab(viewId) {
+    if (currentView === 'animation' && viewId !== 'animation') stopAnimation();
+    currentView = viewId;
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === viewId));
+    document.getElementById('custom-view-config').classList.toggle('open', viewId === 'custom');
+    document.getElementById('animation-controls').classList.toggle('active', viewId === 'animation');
+    const plotEl = document.getElementById('plot-container');
+    const tableEl = document.getElementById('data-table-container');
+    const tableInfo = document.getElementById('data-table-info');
+    if (viewId === 'table') {
+        plotEl.style.display = 'none';
+        tableEl.classList.add('active');
+        tableInfo.classList.add('active');
+    } else {
+        plotEl.style.display = '';
+        tableEl.classList.remove('active');
+        tableInfo.classList.remove('active');
+    }
+    renderCurrentView();
+}
+
+function removeViewTab(viewId) {
+    if (visibleViews.length <= 1) return; // Keep at least one tab
+    visibleViews = visibleViews.filter(v => v !== viewId);
+    if (currentView === viewId) {
+        currentView = visibleViews[0];
+    }
+    renderViewTabs();
+    switchViewTab(currentView);
+}
+
+function addViewTab(viewId) {
+    if (visibleViews.includes(viewId)) return;
+    visibleViews.push(viewId);
+    renderViewTabs();
+    switchViewTab(viewId);
+}
+
+function renderAddViewMenu() {
+    const menu = document.getElementById('view-tab-add-menu');
+    const hiddenViews = ALL_VIEWS.filter(v => !visibleViews.includes(v.id));
+    const addBtn = document.getElementById('view-tab-add');
+    addBtn.style.display = hiddenViews.length > 0 ? '' : 'none';
+    menu.innerHTML = '';
+    for (const v of hiddenViews) {
+        const item = document.createElement('button');
+        item.className = 'view-tab-add-item';
+        item.textContent = v.label;
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            addViewTab(v.id);
+            menu.classList.remove('open');
+        });
+        menu.appendChild(item);
+    }
+}
+
+document.getElementById('view-tab-add').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('view-tab-add-menu').classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.view-tab-add')) {
+        document.getElementById('view-tab-add-menu').classList.remove('open');
+    }
+});
+
+// Custom view checkboxes live-update the plot
+document.getElementById('custom-view-fields').addEventListener('change', () => {
+    if (currentView === 'custom') renderCurrentView();
+});
+
+// Enter key to run
+document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+        document.getElementById('btn-run').click();
+    }
+});
+
+// ---- Initialize ----
+addProjectile();
+buildCustomViewFields();
+renderViewTabs();
+initPlot();
+</script>
+
+</body>
+</html>
